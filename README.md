@@ -56,21 +56,114 @@ This scaffold provides a robust foundation built with:
 
 ## 🚀 Quick Start
 
+### Prerequisites
+
+Before you begin, ensure you have the following installed:
+- **Node.js** 20.x or higher ([Download Node.js](https://nodejs.org/))
+- **npm** 10.x or higher (comes with Node.js)
+
+Verify your installation:
 ```bash
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-
-# Build for production
-npm run build
-
-# Start production server
-npm start
+node --version  # Should be v20.x or higher
+npm --version   # Should be 10.x or higher
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to see your application running.
+### Installation
+
+1. **Clone the repository** (if you haven't already):
+   ```bash
+   git clone <your-repository-url>
+   cd consol
+   ```
+
+2. **Install dependencies**:
+   ```bash
+   npm install
+   ```
+
+3. **Set up environment variables**:
+   
+   Copy the example environment file and configure it:
+   ```bash
+   cp .env.example .env
+   ```
+   
+   Or create a `.env` file in the root directory with:
+   ```bash
+   # Database Configuration
+   DATABASE_URL="file:./db/custom.db"
+   
+   # NextAuth Configuration (optional, for authentication features)
+   NEXTAUTH_URL="http://localhost:8080"
+   NEXTAUTH_SECRET="your-secret-key-here"
+   
+   # Node Environment
+   NODE_ENV="development"
+   ```
+
+4. **Set up the database**:
+   ```bash
+   # Generate Prisma Client
+   npm run db:generate
+   
+   # Push the schema to your database
+   npm run db:push
+   ```
+
+### Running the Application
+
+#### Development Mode
+Start the development server with hot-reload:
+```bash
+npm run dev
+```
+The application will be available at [http://localhost:8080](http://localhost:8080)
+
+#### Production Mode
+Build and run the production version:
+```bash
+# Build the application
+npm run build
+
+# Start the production server
+npm start
+```
+The production server will run at [http://localhost:8080](http://localhost:8080)
+
+### Database Management
+
+The application uses Prisma ORM with SQLite. Available database commands:
+
+```bash
+# Generate Prisma Client (after schema changes)
+npm run db:generate
+
+# Push schema changes to database
+npm run db:push
+
+# Create a new migration
+npm run db:migrate
+
+# Reset database (⚠️ deletes all data)
+npm run db:reset
+```
+
+### Troubleshooting
+
+**Port already in use:**
+If port 8080 is already in use, you can either:
+- Stop the process using port 8080
+- Modify the port in `package.json` (change `-p 8080` in the dev script)
+
+**Database errors:**
+- Ensure the `db` directory exists and is writable
+- Run `npm run db:push` to sync your database schema
+- Check that your `.env` file has the correct `DATABASE_URL`
+
+**Build errors:**
+- Clear Next.js cache: `rm -rf .next`
+- Delete node_modules and reinstall: `rm -rf node_modules && npm install`
+- Ensure you're using Node.js 20.x or higher
 
 ## 🤖 Powered by Z.ai
 

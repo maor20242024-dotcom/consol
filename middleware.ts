@@ -5,13 +5,27 @@ import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
 
 const intlMiddleware = createMiddleware(routing);
 
+// Protected paths that require authentication
+const protectedPaths = [
+    '/dashboard',
+    '/voice',
+    '/crm',
+    '/admin',
+    '/campaigns-manager',
+    '/ad-creator',
+    '/analytics',
+    '/ab-testing'
+];
+
 export async function middleware(req: NextRequest) {
     const response = intlMiddleware(req);
-
-    const protectedPaths = ['/dashboard', '/voice', '/crm', '/admin'];
     const pathname = req.nextUrl.pathname;
-    const pathWithoutLocale = pathname.replace(/^\/[a-z]{2}/, '');
 
+    // Extract locale and path without locale
+    const locale = pathname.match(/^\/([a-z]{2})/)?.[1] || 'en';
+    const pathWithoutLocale = pathname.replace(/^\/[a-z]{2}/, '') || '/';
+
+    // Check if current path is protected
     const isProtected = protectedPaths.some(path => pathWithoutLocale.startsWith(path));
 
     if (isProtected) {
@@ -20,7 +34,6 @@ export async function middleware(req: NextRequest) {
         const { data: { session } } = await supabase.auth.getSession();
 
         if (!session) {
-            const locale = pathname.match(/^\/([a-z]{2})/)?.[1] || 'ar';
             return NextResponse.redirect(new URL(`/${locale}/login`, req.url));
         }
     }

@@ -1,141 +1,141 @@
-# 🚀 Welcome to Z.ai Code Scaffold
+# 👑 IMPERIUM GATE
 
-A modern, production-ready web application scaffold powered by cutting-edge technologies, designed to accelerate your development with [Z.ai](https://chat.z.ai)'s AI-powered coding assistance.
+> The integrated platform for AI-powered luxury property management
 
-## ✨ Technology Stack
-
-This scaffold provides a robust foundation built with:
-
-### 🎯 Core Framework
-- **⚡ Next.js 15** - The React framework for production with App Router
-- **📘 TypeScript 5** - Type-safe JavaScript for better developer experience
-- **🎨 Tailwind CSS 4** - Utility-first CSS framework for rapid UI development
-
-### 🧩 UI Components & Styling
-- **🧩 shadcn/ui** - High-quality, accessible components built on Radix UI
-- **🎯 Lucide React** - Beautiful & consistent icon library
-- **🌈 Framer Motion** - Production-ready motion library for React
-- **🎨 Next Themes** - Perfect dark mode in 2 lines of code
-
-### 📋 Forms & Validation
-- **🎣 React Hook Form** - Performant forms with easy validation
-- **✅ Zod** - TypeScript-first schema validation
-
-### 🔄 State Management & Data Fetching
-- **🐻 Zustand** - Simple, scalable state management
-- **🔄 TanStack Query** - Powerful data synchronization for React
-- **🌐 Axios** - Promise-based HTTP client
-
-### 🗄️ Database & Backend
-- **🗄️ Prisma** - Next-generation Node.js and TypeScript ORM
-- **🔐 NextAuth.js** - Complete open-source authentication solution
-
-### 🎨 Advanced UI Features
-- **📊 TanStack Table** - Headless UI for building tables and datagrids
-- **🖱️ DND Kit** - Modern drag and drop toolkit for React
-- **📊 Recharts** - Redefined chart library built with React and D3
-- **🖼️ Sharp** - High performance image processing
-
-### 🌍 Internationalization & Utilities
-- **🌍 Next Intl** - Internationalization library for Next.js
-- **📅 Date-fns** - Modern JavaScript date utility library
-- **🪝 ReactUse** - Collection of essential React hooks for modern development
-
-## 🎯 Why This Scaffold?
-
-- **🏎️ Fast Development** - Pre-configured tooling and best practices
-- **🎨 Beautiful UI** - Complete shadcn/ui component library with advanced interactions
-- **🔒 Type Safety** - Full TypeScript configuration with Zod validation
-- **📱 Responsive** - Mobile-first design principles with smooth animations
-- **🗄️ Database Ready** - Prisma ORM configured for rapid backend development
-- **🔐 Auth Included** - NextAuth.js for secure authentication flows
-- **📊 Data Visualization** - Charts, tables, and drag-and-drop functionality
-- **🌍 i18n Ready** - Multi-language support with Next Intl
-- **🚀 Production Ready** - Optimized build and deployment settings
-- **🤖 AI-Friendly** - Structured codebase perfect for AI assistance
+[![Next.js](https://img.shields.io/badge/Next.js-15.3.5-black)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
+[![Supabase](https://img.shields.io/badge/Supabase-Connected-green)](https://supabase.com/)
+[![Deployed](https://img.shields.io/badge/Vercel-Deployed-success)](https://vercel.com/)
 
 ## 🚀 Quick Start
 
 ```bash
-# Install dependencies
-npm install
+# IMPERIUM GATE — Consolidated Project README
 
-# Start development server
+This repository contains IMPERIUM GATE: a bilingual (EN/AR) CRM and Instagram Ads management platform built with Next.js, TypeScript, Tailwind CSS, Supabase (Postgres) and Prisma. This README is the consolidated, up-to-date guide — it replaces scattered README files and aggregates the latest documentation.
+
+Contents (high level)
+- Project overview & status
+- Quick start (dev)
+- Environment variables (required)
+- Deployment (Vercel quick steps)
+- Database & Prisma notes (Prisma fix guidance)
+- Admin user creation (Supabase)
+- Testing checks & post-deploy validation
+
+Project status (latest)
+- Phase 1: Core features implemented (Campaigns, Ads, Asset upload, Analytics helpers).
+- Phase 2: AI suggestion mock, UI/UX improvements completed.
+- Remaining: Prisma direct DB connection issue — please update `DATABASE_URL` from Supabase (see below).
+
+Quick start (development)
+1. Install dependencies:
+```bash
+npm ci
+```
+2. Create local env from example and fill secrets (do NOT commit `.env.local`):
+```bash
+cp .env.example .env.local
+# edit .env.local with required values (see Environment variables below)
+```
+3. Run dev server:
+```bash
 npm run dev
+```
+Open: `http://localhost:3001/en` or `/ar`.
 
-# Build for production
-npm run build
+Environment variables (required)
+- `NEXT_PUBLIC_SUPABASE_URL` — Supabase project URL
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Supabase anon/public key
+- `SUPABASE_SERVICE_ROLE_KEY` — Service role (server only)
+- `DATABASE_URL` — Postgres connection string (Prisma)
+- `OPENROUTER_API_KEY` / `GEMINI_API_KEY` — Optional LLM keys if used
 
-# Start production server
-npm start
+Security note: rotate any keys that were committed or exposed. Keep service keys server-only (do not prefix with `NEXT_PUBLIC_`).
+
+Prisma / DATABASE_URL guidance (critical)
+- If `npx prisma db push` fails with `FATAL: Tenant or user not found`, use the Direct Connection string from Supabase (not the pooler) for migrations. See `docs/PHASE1_FIXES_GUIDE.md`.
+	- For runtime you may use pooler connection (with `?pgbouncer=true`), but for Prisma schema sync use direct host:5432 connection.
+
+Create admin user (Supabase)
+1. Open Supabase Dashboard → Authentication → Users
+2. Add user with email `admin@imperiumgate.com` and password `Admin123456!` (enable Auto Confirm)
+3. (Optional) Make admin via SQL:
+```sql
+UPDATE public.profiles SET role = 'admin' WHERE email = 'admin@imperiumgate.com';
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to see your application running.
-
-## 🤖 Powered by Z.ai
-
-This scaffold is optimized for use with [Z.ai](https://chat.z.ai) - your AI assistant for:
-
-- **💻 Code Generation** - Generate components, pages, and features instantly
-- **🎨 UI Development** - Create beautiful interfaces with AI assistance  
-- **🔧 Bug Fixing** - Identify and resolve issues with intelligent suggestions
-- **📝 Documentation** - Auto-generate comprehensive documentation
-- **🚀 Optimization** - Performance improvements and best practices
-
-Ready to build something amazing? Start chatting with Z.ai at [chat.z.ai](https://chat.z.ai) and experience the future of AI-powered development!
-
-## 📁 Project Structure
-
+Deployment (Vercel — quick)
+1. Add environment variables in Vercel Project Settings (same as above).
+2. Deploy via CLI or Git:
+```bash
+vercel --prod
+# or push to main and let Vercel auto-deploy
+git push origin main
 ```
-src/
-├── app/                 # Next.js App Router pages
-├── components/          # Reusable React components
-│   └── ui/             # shadcn/ui components
-├── hooks/              # Custom React hooks
-└── lib/                # Utility functions and configurations
+3. After deploy, test `/en/login` and API endpoints.
+
+Testing & verification checklist
+- Verify translations load (no MISSING_MESSAGE), clear `.next` if needed.
+- Test API endpoints: `/api/instagram/campaigns`, `/api/instagram/ads`, `/api/instagram/assets/upload`, `/api/voice`.
+- Test file upload and Supabase Storage permissions.
+
+Where to find more details
+- Prisma fix instructions: `docs/PHASE1_FIXES_GUIDE.md`
+- Testing guide: `docs/TESTING_GUIDE.md`
+- Short deployment steps: `DEPLOYMENT.md` (root)
+- Creation and setup: `docs/HOW_TO_CREATE_USER.md`
+
+Next actions I can take (pick one):
+1. Build locally now (`npm run build`) and report errors.
+2. Create/update `README-AR.md` in project root with the Arabic consolidated translation.
+3. Prepare an archive plan to move other READMEs into `docs/ARCHIVE/` (will not delete without approval).
+
+Tell me which action to run next (1 / 2 / 3) and I will proceed.
+## 🌐 Available Routes
+
+| Route | Description | Auth Required |
+|-------|-------------|---------------|
+| `/` | Redirects to `/en` | ❌ |
+| `/en` or `/ar` | Landing page | ❌ |
+| `/[locale]/login` | Login page | ❌ |
+| `/[locale]/dashboard` | Main dashboard | ✅ |
+| `/[locale]/admin` | Admin panel | ✅ |
+| `/[locale]/crm` | CRM system | ✅ |
+| `/[locale]/voice` | AI Voice center | ✅ |
+
+## 🔧 Scripts
+
+```bash
+npm run dev      # Start development server (port 3001)
+npm run build    # Build for production
+npm start        # Start production server
+npm run lint     # Run ESLint
 ```
 
-## 🎨 Available Features & Components
+## 📖 Documentation
 
-This scaffold includes a comprehensive set of modern web development tools:
+All documentation is in the `docs/` folder:
 
-### 🧩 UI Components (shadcn/ui)
-- **Layout**: Card, Separator, Aspect Ratio, Resizable Panels
-- **Forms**: Input, Textarea, Select, Checkbox, Radio Group, Switch
-- **Feedback**: Alert, Toast (Sonner), Progress, Skeleton
-- **Navigation**: Breadcrumb, Menubar, Navigation Menu, Pagination
-- **Overlay**: Dialog, Sheet, Popover, Tooltip, Hover Card
-- **Data Display**: Badge, Avatar, Calendar
+- **CREDENTIALS.md** - Login credentials and access info
+- **SETUP_COMPLETE.md** - Complete setup guide
+- **HOW_TO_CREATE_USER.md** - User creation guide
+- **UPDATES.md** - Recent changes and updates
+- **DESIGN_DOCUMENTATION.md** - Design system details
 
-### 📊 Advanced Data Features
-- **Tables**: Powerful data tables with sorting, filtering, pagination (TanStack Table)
-- **Charts**: Beautiful visualizations with Recharts
-- **Forms**: Type-safe forms with React Hook Form + Zod validation
+## 🚢 Deployment
 
-### 🎨 Interactive Features
-- **Animations**: Smooth micro-interactions with Framer Motion
-- **Drag & Drop**: Modern drag-and-drop functionality with DND Kit
-- **Theme Switching**: Built-in dark/light mode support
+Project is deployed on Vercel with automatic deployments from main branch.
 
-### 🔐 Backend Integration
-- **Authentication**: Ready-to-use auth flows with NextAuth.js
-- **Database**: Type-safe database operations with Prisma
-- **API Client**: HTTP requests with Axios + TanStack Query
-- **State Management**: Simple and scalable with Zustand
+```bash
+# Deploy manually
+npx vercel --prod
+```
 
-### 🌍 Production Features
-- **Internationalization**: Multi-language support with Next Intl
-- **Image Optimization**: Automatic image processing with Sharp
-- **Type Safety**: End-to-end TypeScript with Zod validation
-- **Essential Hooks**: 100+ useful React hooks with ReactUse for common patterns
+## 📝 License
 
-## 🤝 Get Started with Z.ai
-
-1. **Clone this scaffold** to jumpstart your project
-2. **Visit [chat.z.ai](https://chat.z.ai)** to access your AI coding assistant
-3. **Start building** with intelligent code generation and assistance
-4. **Deploy with confidence** using the production-ready setup
+All rights reserved © IMPERIUM GATE
 
 ---
 
-Built with ❤️ for the developer community. Supercharged by [Z.ai](https://chat.z.ai) 🚀
+**Built with 👑 by the IMPERIUM GATE team**

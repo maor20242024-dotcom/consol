@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
   experimental: {
     esmExternals: true
   },
+  output: 'standalone',
 };
 
 export default withNextIntl(nextConfig);

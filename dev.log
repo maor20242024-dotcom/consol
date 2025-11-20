@@ -2,27 +2,19 @@
 [33m[nodemon] to restart at any time, enter `rs`[39m
 [33m[nodemon] watching path(s): src/**/*[39m
 [33m[nodemon] watching extensions: ts,tsx,js,jsx[39m
-[32m[nodemon] starting `next dev -p 3001`[39m
+[32m[nodemon] starting `next dev -p 8080`[39m
    ▲ Next.js 15.3.5
-   - Local:        http://localhost:3001
-   - Network:      http://168.192.1.243:3001
-   - Environments: .env.local, .env
+   - Local:        http://localhost:8080
+   - Network:      http://192.168.1.201:8080
+   - Environments: .env.local
 
  ✓ Starting...
- ✓ Ready in 2.2s
- ○ Compiling /_not-found ...
- ✓ Compiled /_not-found in 720ms (731 modules)
- GET / 404 in 919ms
- ○ Compiling /[locale] ...
- ✓ Compiled /[locale] in 649ms (1044 modules)
- GET /ar 200 in 1340ms
- GET /site.webmanifest 404 in 32ms
- GET /en 200 in 74ms
- GET /site.webmanifest 404 in 26ms
- ○ Compiling /[locale]/admin ...
- ✓ Compiled /[locale]/admin in 724ms (1218 modules)
- GET /en/admin 200 in 1357ms
- GET /site.webmanifest 404 in 120ms
- ✓ Compiled /[locale]/crm in 393ms (1233 modules)
- GET /en/crm 200 in 974ms
- GET /site.webmanifest 404 in 49ms
+ ✓ Ready in 1495ms
+ ○ Compiling / ...
+ ✓ Compiled / in 1188ms (754 modules)
+ GET / 307 in 1411ms
+ ✓ Compiled /[locale] in 478ms (1059 modules)
+ GET /en 200 in 1094ms
+ GET / 307 in 298ms
+ GET /en 200 in 105ms
+ GET /ar 200 in 71ms

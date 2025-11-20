@@ -53,3 +53,185 @@ model Campaign {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+// ===== Instagram Advertising Models =====
+
+model InstagramAccount {
+  id                    String   @id @default(cuid())
+  userId                String
+  instagramUserId       String
+  instagramUsername     String
+  accessToken           String   // يجب تشفيره في الإنتاج
+  businessAccountId     String
+  followers             Int      @default(0)
+  engagementRate        Float    @default(0)
+  status                String   @default("active") // active, inactive, expired
+  lastSyncedAt          DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  // Relations
+  campaigns             InstagramCampaign[]
+  ads                   InstagramAd[]
+}
+
+model InstagramCampaign {
+  id                    String   @id @default(cuid())
+  accountId             String
+  name                  String
+  description           String?
+  budget                Decimal  @default(0)
+  targetAudience        Json?    // JSON object مع demographics, interests, etc
+  status                String   @default("draft") // draft, scheduled, active, paused, completed
+  startDate             DateTime?
+  endDate               DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  // Relations
+  account               InstagramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  ads                   InstagramAd[]
+  
+  @@index([accountId])
+}
+
+model InstagramAd {
+  id                    String   @id @default(cuid())
+  accountId             String
+  campaignId            String
+  adAccountId           String?
+  adType                String   // image, carousel, video, collection
+  headline              String
+  description           String   @db.Text
+  callToAction          String   @default("SHOP_NOW") // SHOP_NOW, LEARN_MORE, BOOK_NOW
+  status                String   @default("draft") // draft, pending_review, active, paused, rejected, completed
+  
+  // Performance metrics
+  impressions           Int      @default(0)
+  clicks                Int      @default(0)
+  conversions           Int      @default(0)
+  spend                 Decimal  @default(0)
+  ctr                   Float    @default(0) // click-through rate
+  cpc                   Decimal  @default(0) // cost per click
+  cpa                   Decimal  @default(0) // cost per acquisition
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  // Relations
+  account               InstagramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  campaign              InstagramCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  assets                AdAsset[]
+  variants              AdVariant[]
+  performance           AdPerformance[]
+  
+  @@index([accountId])
+  @@index([campaignId])
+}
+
+model AdAsset {
+  id                    String   @id @default(cuid())
+  adId                  String
+  assetType             String   // image, video, carouselItem
+  url                   String   // رابط الملف في Supabase Storage
+  thumbnail             String?
+  altText               String?
+  dimensions            Json?    // { width: number, height: number }
+  fileSize              Int?
+  duration              Int?     // بالثواني للفيديو
+  uploadedAt            DateTime @default(now())
+  
+  // Relations
+  ad                    InstagramAd @relation(fields: [adId], references: [id], onDelete: Cascade)
+  
+  @@index([adId])
+}
+
+model AdVariant {
+  id                    String   @id @default(cuid())
+  adId                  String
+  variantName           String   // Variant A, Variant B, etc
+  headline              String?
+  description           String?  @db.Text
+  imageId               String?
+  status                String   @default("active") // active, inactive
+  
+  // Performance metrics specific to variant
+  impressions           Int      @default(0)
+  clicks                Int      @default(0)
+  conversions           Int      @default(0)
+  spend                 Decimal  @default(0)
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  // Relations
+  ad                    InstagramAd @relation(fields: [adId], references: [id], onDelete: Cascade)
+  
+  @@index([adId])
+}
+
+model AdPerformance {
+  id                    String   @id @default(cuid())
+  adId                  String
+  date                  DateTime
+  impressions           Int      @default(0)
+  clicks                Int      @default(0)
+  conversions           Int      @default(0)
+  spend                 Decimal  @default(0)
+  reach                 Int      @default(0)
+  saveCount             Int      @default(0)
+  shareCount            Int      @default(0)
+  likeCount             Int      @default(0)
+  commentCount          Int      @default(0)
+  createdAt             DateTime @default(now())
+  
+  // Relations
+  ad                    InstagramAd @relation(fields: [adId], references: [id], onDelete: Cascade)
+  
+  @@index([adId])
+  @@index([date])
+}
+
+model ABTest {
+  id                    String   @id @default(cuid())
+  name                  String
+  description           String?
+  adId                  String?
+  campaignId            String?
+  status                String   @default("active") // active, paused, completed
+  startDate             DateTime
+  endDate               DateTime?
+  budget                Decimal
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  // Relations
+  variants              ABTestVariant[]
+  
+  @@index([campaignId])
+}
+
+model ABTestVariant {
+  id                    String   @id @default(cuid())
+  testId                String
+  variantName           String   // Control, Variant A, Variant B
+  adId                  String?
+  trafficAllocation     Float    @default(50) // percentage
+  
+  // Performance metrics
+  impressions           Int      @default(0)
+  clicks                Int      @default(0)
+  conversions           Int      @default(0)
+  spend                 Decimal  @default(0)
+  ctr                   Float    @default(0)
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  // Relations
+  test                  ABTest @relation(fields: [testId], references: [id], onDelete: Cascade)
+  
+  @@index([testId])
+}

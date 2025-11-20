@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
+import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +16,9 @@ const FloatingDots = dynamic(() => import("@/components/FloatingDots").then(m =>
 
 export default function CRMPage() {
     const t = useTranslations("Dashboard");
+    const router = useRouter();
+    const pathname = usePathname();
+    const locale = pathname.split('/')[1] || 'en';
     const [leads, setLeads] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);

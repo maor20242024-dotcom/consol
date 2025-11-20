@@ -53,6 +53,17 @@ export default function ImperialDashboard() {
   });
 
   const t = useTranslations("Dashboard");
+  const router = useRouter();
+  const pathname = usePathname();
+  const locale = pathname.split('/')[1] || 'en';
+
+  const handleLogout = async () => {
+    router.push(`/${locale}/login`);
+  };
+
+  const navigateTo = (path: string) => {
+    router.push(`/${locale}/${path}`);
+  };
 
   useEffect(() => {
 
@@ -82,17 +93,24 @@ export default function ImperialDashboard() {
 
   const menuItems = [
 
-    { icon: BarChart3, label: t("overview"), active: true },
+    { icon: BarChart3, label: t("overview"), active: true, path: 'dashboard' },
 
-    { icon: Bot, label: t("aiAssistant"), active: false },
+    { icon: Bot, label: t("aiAssistant"), active: false, path: 'dashboard' },
 
-    { icon: Target, label: t("campaigns"), active: false },
+    { icon: Target, label: t("campaigns"), active: false, path: 'crm' },
 
-    { icon: Phone, label: t("calls"), active: false },
+    { icon: Phone, label: t("calls"), active: false, path: 'voice' },
 
-    { icon: Database, label: t("data"), active: false },
+    { icon: Database, label: t("data"), active: false, path: 'admin' },
 
-    { icon: Settings, label: t("settings"), active: false },
+    // Instagram Advertising Menu Items
+    { icon: Globe, label: locale === 'ar' ? 'مدير الإعلانات' : 'Ad Manager', active: false, path: 'campaigns-manager' },
+
+    { icon: Sparkles, label: locale === 'ar' ? 'منشئ الإعلانات' : 'Ad Creator', active: false, path: 'ad-creator' },
+
+    { icon: TrendingUp, label: locale === 'ar' ? 'التحليلات' : 'Analytics', active: false, path: 'analytics' },
+
+    { icon: Settings, label: t("settings"), active: false, path: 'dashboard' },
 
   ];
 
@@ -170,6 +188,8 @@ export default function ImperialDashboard() {
 
                   key={i}
 
+                  onClick={() => navigateTo(item.path)}
+
                   className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl transition-all duration-300
 
                     ${item.active
@@ -198,7 +218,11 @@ export default function ImperialDashboard() {
 
             <div className="absolute bottom-8 left-8 right-8">
 
-              <Button variant="outline" className="w-full glass">
+              <Button
+                variant="outline"
+                className="w-full glass"
+                onClick={handleLogout}
+              >
 
                 <LogOut className="w-5 h-5 ml-3" />
 

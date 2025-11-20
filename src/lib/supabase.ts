@@ -1,12 +1,46 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co'
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key'
+// Validate required environment variables
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Missing required Supabase environment variables: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY')
+}
 
-// For server-side only (bypasses RLS)
-export const supabaseAdmin = createClient(
-    supabaseUrl,
-    process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder-service-role-key'
-)
+/**
+ * Supabase client for client-side operations
+ * - Respects Row Level Security (RLS) policies
+ * - Persists session in localStorage (browser only)
+ * - Auto-refreshes expired tokens
+ */
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+    }
+})
+
+/**
+ * Supabase admin client for server-side operations
+ * ⚠️ WARNING: This client bypasses RLS policies using SERVICE_ROLE_KEY
+ * - ONLY use on the server side (API routes, server components)
+ * - NEVER expose this to the client
+ * - Use only when administrative access is explicitly required
+ * - Audit all operations performed with this client
+ */
+export const supabaseAdmin = serviceRoleKey
+    ? createClient(supabaseUrl, serviceRoleKey, {
+        auth: {
+            persistSession: false,
+            autoRefreshToken: false,
+        }
+    })
+    : (() => {
+        console.warn('SUPABASE_SERVICE_ROLE_KEY not found. Admin operations will use standard client with RLS.');
+        return supabase;
+    })()
+

@@ -44,13 +44,15 @@ export default function LoginPage() {
 
   const [isLoading, setIsLoading] = useState(false);
 
+  const [error, setError] = useState("");
+
   const router = useRouter();
 
   const pathname = usePathname();
 
   const t = useTranslations("Dashboard");
 
-  const locale = pathname.split('/')[1] || 'ar';
+  const locale = pathname.split('/')[1] || 'en';
 
   const handleSubmit = async (e: React.FormEvent) => {
 
@@ -58,35 +60,43 @@ export default function LoginPage() {
 
     setIsLoading(true);
 
+    setError("");
+
     try {
-      // Try Supabase Auth first
+      console.log("🔐 Attempting login with:", { email });
+      console.log("🔐 Supabase URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
+      console.log("🔐 Anon Key exists:", !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+      console.log("🔐 Anon Key length:", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.length);
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
+      console.log("🔐 Login response:", { data, error });
+
       if (error) {
-        alert(error.message);
+        console.error("❌ Login error:", error);
+        setError(error.message);
         setIsLoading(false);
         return;
       }
 
       if (data?.session) {
-        // Redirect to dashboard
+        console.log("✅ Login successful! Redirecting...");
         router.push(`/${locale}/dashboard`);
+        router.refresh();
       }
     } catch (error) {
-      console.error("Login error:", error);
-      alert("حدث خطأ في تسجيل الدخول");
+      console.error("❌ Unexpected login error:", error);
+      setError("An unexpected error occurred during login");
       setIsLoading(false);
     }
   };
 
   return (
 
-    <div className="min-h-screen bg-background relative overflow-hidden" dir="rtl">
-
-      {/* Animated Background */}
+    <div className="min-h-screen bg-background relative overflow-hidden" dir={locale === 'ar' ? 'rtl' : 'ltr'}>    {/* Animated Background */}
 
       <div className="fixed inset-0 -z-10">
 
@@ -165,6 +175,13 @@ export default function LoginPage() {
               </p>
 
             </div>
+
+            {/* Error Message */}
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg mb-4">
+                {error}
+              </div>
+            )}
 
             {/* Form */}
 

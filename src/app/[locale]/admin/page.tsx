@@ -17,7 +17,7 @@ export default function AdminPage() {
     const t = useTranslations("Dashboard");
     const router = useRouter();
     const pathname = usePathname();
-    const locale = pathname.split('/')[1] || 'ar';
+    const locale = pathname.split('/')[1] || 'en';
     const [stats, setStats] = useState({ totalLeads: 0, totalUsers: 0, totalCampaigns: 0 });
     const [loading, setLoading] = useState(true);
     const [systemHealth, setSystemHealth] = useState(98.5);
@@ -71,13 +71,14 @@ export default function AdminPage() {
 
                     <nav className="space-y-2 mb-12">
                         {[
-                            { icon: BarChart3, label: "لوحة التحكم" },
-                            { icon: Users, label: "العملاء" },
-                            { icon: TrendingUp, label: "التقارير" },
-                            { icon: Settings, label: "الإعدادات" }
+                            { icon: BarChart3, label: "لوحة التحكم", path: "dashboard" },
+                            { icon: Users, label: "العملاء", path: "crm" },
+                            { icon: TrendingUp, label: "التقارير", path: "admin" },
+                            { icon: Settings, label: "الإعدادات", path: "settings" }
                         ].map((item, i) => (
                             <button
                                 key={i}
+                                onClick={() => router.push(`/${locale}/${item.path}`)}
                                 className="w-full flex items-center gap-4 px-6 py-4 rounded-2xl transition-all hover:bg-primary/20 hover:text-primary text-muted-foreground"
                             >
                                 <item.icon className="w-6 h-6" />

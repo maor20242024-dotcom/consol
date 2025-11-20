@@ -1,11 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-// @ts-ignore
-const supabase: any = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { supabase } from "@/lib/supabase";
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,9 +14,9 @@ export async function POST(req: NextRequest) {
 
     const { data: lead, error } = await supabase
       .from('leads')
-      .insert([{ 
-        name, 
-        email, 
+      .insert([{
+        name,
+        email,
         phone: phone || null,
         budget: budget || null,
         status: 'new',

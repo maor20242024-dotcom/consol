@@ -11,6 +11,11 @@ const config: Config = {
   theme: {
         extend: {
                 colors: {
+                        // IMPERIUM GATE Luxury Palette
+                        panel: 'var(--panel)',
+                        'panel-foreground': 'var(--panel-foreground)',
+                        'panel-soft': 'var(--panel-soft)',
+                        'border-soft': 'var(--border-soft)',
                         // Sky Blue Deep Color Scheme - Professional AI Theme
                         primary: {
                             DEFAULT: '#0ea5e9', // Sky Blue 500

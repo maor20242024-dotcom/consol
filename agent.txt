@@ -1,0 +1,20 @@
+AGENT POLICY - Imperium Gate
+
+This file exists to instruct any automated agent (or human assistant) working on this repository about the documentation workflow and allowed modifications.
+
+Rules for any agent in any session:
+
+- Only update existing Markdown files inside the `docs/` folder when you make changes related to those documents.
+- Do NOT create new Markdown files under `docs/` unless explicitly approved by a human maintainer.
+- If you need to add new information, update the most relevant existing file (e.g., `APPLICATION_STATUS.md`, `UPDATES.md`, `SETUP_COMPLETE.md`) instead of creating a new file.
+- Before deleting or permanently removing any documentation file, create an archival copy under `docs/ARCHIVE/` and obtain explicit confirmation from the project owner.
+- Always run a quick sanity check after edits:
+  1. Validate JSON and env files (no secrets leak to public channels).
+  2. Restart the dev server only from the dedicated server terminal.
+  3. Do not run commands in the server terminal other than `npm run dev`.
+- When modifying `.env` files or any credential material, notify the owner and recommend rotating any keys that were exposed.
+
+Failure to follow these rules may break the local development server or leak sensitive keys.
+
+Signed-off-by: repo-agent-policy
+Date: 2025-11-19

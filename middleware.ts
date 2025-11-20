@@ -1,7 +1,7 @@
 import createMiddleware from 'next-intl/middleware';
 import { routing } from './src/i18n/routing';
 import { NextRequest, NextResponse } from 'next/server';
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
+import { createServerClient } from '@supabase/ssr';
 
 const intlMiddleware = createMiddleware(routing);
 
@@ -29,8 +29,23 @@ export async function middleware(req: NextRequest) {
     const isProtected = protectedPaths.some(path => pathWithoutLocale.startsWith(path));
 
     if (isProtected) {
-        const res = NextResponse.next();
-        const supabase = createMiddlewareClient({ req, res });
+        const supabase = createServerClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            {
+                cookies: {
+                    getAll() {
+                        return req.cookies.getAll();
+                    },
+                    setAll(cookiesToSet) {
+                        cookiesToSet.forEach(({ name, value, options }) => {
+                            response.cookies.set(name, value, options);
+                        });
+                    },
+                },
+            }
+        );
+
         const { data: { session } } = await supabase.auth.getSession();
 
         if (!session) {

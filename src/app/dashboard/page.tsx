@@ -412,19 +412,19 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="bg-slate-900/50 border-purple-500/20 hover:border-purple-500/40 transition-colors">
+          <Card className="bg-slate-900/50 border-primary/20 hover:border-primary/40 transition-colors">
             <CardHeader className="pb-2">
-              <CardTitle className="text-purple-400 text-sm flex items-center">
+              <CardTitle className="text-primary text-sm flex items-center">
                 <ArrowUpRight className="w-4 h-4 ml-2" />
                 التحويل
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-white">{conversionRate}%</div>
-              <p className="text-purple-400 text-sm">معدل</p>
+              <p className="text-primary text-sm">معدل</p>
               <div className="flex items-center mt-2">
-                <ArrowUpRight className="w-4 h-4 text-purple-400 ml-1" />
-                <span className="text-purple-400 text-sm">+2.1%</span>
+                <ArrowUpRight className="w-4 h-4 text-primary ml-1" />
+                <span className="text-primary text-sm">+2.1%</span>
               </div>
             </CardContent>
           </Card>
@@ -462,7 +462,7 @@ export default function DashboardPage() {
               <Target className="w-4 h-4 ml-2" />
               التسويق
             </TabsTrigger>
-            <TabsTrigger value="communications" className="text-purple-400 data-[state=active]:bg-purple-500/20">
+            <TabsTrigger value="communications" className="text-primary data-[state=active]:bg-primary/20">
               <Phone className="w-4 h-4 ml-2" />
               الاتصالات
             </TabsTrigger>
@@ -638,9 +638,9 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
 
-              <Card className="bg-slate-900/50 border-purple-500/20">
+              <Card className="bg-slate-900/50 border-primary/20">
                 <CardHeader>
-                  <CardTitle className="text-purple-400 text-sm">قدرات الذكاء الاصطناعي</CardTitle>
+                  <CardTitle className="text-primary text-sm">قدرات الذكاء الاصطناعي</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
@@ -738,9 +738,9 @@ export default function DashboardPage() {
 
           <TabsContent value="communications" className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <Card className="bg-slate-900/50 border-purple-500/20">
+              <Card className="bg-slate-900/50 border-primary/20">
                 <CardHeader>
-                  <CardTitle className="text-purple-400 flex items-center">
+                  <CardTitle className="text-primary flex items-center">
                     <Phone className="w-5 h-5 ml-2" />
                     المكالمات الصوتية
                   </CardTitle>
@@ -805,7 +805,7 @@ export default function DashboardPage() {
                         <p className="text-gray-400 text-sm">SMS</p>
                       </div>
                       <div>
-                        <div className="text-2xl font-bold text-purple-400">1,410</div>
+                        <div className="text-2xl font-bold text-primary">1,410</div>
                         <p className="text-gray-400 text-sm">البريد الإلكتروني</p>
                       </div>
                     </div>
@@ -897,7 +897,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="flex justify-between items-center mb-4">
                       <span className="text-gray-300">Voice AI</span>
-                      <Badge variant="outline" className="border-purple-500/50 text-purple-400">مفعل</Badge>
+                      <Badge variant="outline" className="border-primary/50 text-primary">مفعل</Badge>
                     </div>
                   </div>
                 </CardContent>

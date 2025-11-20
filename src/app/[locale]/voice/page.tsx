@@ -14,7 +14,7 @@ import dynamic from "next/dynamic";
 const FloatingDots = dynamic(() => import("@/components/FloatingDots").then(m => m.FloatingDots), { ssr: false });
 
 export default function VoiceCallCenter() {
-  const t = useTranslations("Dashboard");
+  const voiceT = useTranslations("Voice");
   const router = useRouter();
   const pathname = usePathname();
   const locale = pathname.split('/')[1] || 'en';
@@ -122,7 +122,7 @@ export default function VoiceCallCenter() {
             IMPERIUM VOICE™
           </h1>
           <p className="text-2xl text-muted-foreground mb-4">
-            Royal AI Call Center - Powered by Intelligence
+            {voiceT("title")} - {locale === "ar" ? "مدعوم بالذكاء الاصطناعي" : "Powered by Intelligence"}
           </p>
           <Badge className="text-lg px-6 py-2 bg-green-500/20 text-green-400 border-green-500/30">
             <Activity className="w-5 h-5 mr-2 animate-pulse" />
@@ -139,21 +139,21 @@ export default function VoiceCallCenter() {
                   <Crown className="w-10 h-10 text-primary" />
                 </div>
                 <div>
-                  <CardTitle className="text-3xl font-bold">Start Royal Call</CardTitle>
-                  <p className="text-muted-foreground">The Emperor is ready to close</p>
+                  <CardTitle className="text-3xl font-bold">{voiceT("startCall")}</CardTitle>
+                  <p className="text-muted-foreground">{locale === "ar" ? "الإمبراطور جاهز للإغلاق" : "The Emperor is ready to close"}</p>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
               <Input
-                placeholder="Client Name"
+                placeholder={voiceT("clientName")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="h-14 text-lg"
                 disabled={isCalling}
               />
               <Input
-                placeholder="Phone Number (e.g., +971501234567)"
+                placeholder={voiceT("phonePlaceholder")}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className="h-14 text-lg"
@@ -161,7 +161,7 @@ export default function VoiceCallCenter() {
                 disabled={isCalling}
               />
               <Input
-                placeholder="Campaign Name"
+                placeholder={locale === "ar" ? "اسم الحملة" : "Campaign Name"}
                 value={campaign}
                 onChange={(e) => setCampaign(e.target.value)}
                 className="h-14 text-lg"
@@ -176,12 +176,12 @@ export default function VoiceCallCenter() {
                 {isCalling ? (
                   <div className="flex items-center gap-3">
                     <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin" />
-                    {callStatus === "ringing" ? "Calling..." : "Call in Progress..."}
+                    {callStatus === "ringing" ? voiceT("calling") : voiceT("active")}
                   </div>
                 ) : (
                   <div className="flex items-center gap-3">
                     <Phone className="w-7 h-7" />
-                    Start Call Now
+                    {voiceT("startCall")}
                   </div>
                 )}
               </Button>
@@ -223,7 +223,7 @@ export default function VoiceCallCenter() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Mic className={`w-8 h-8 ${callStatus === "active" ? "text-green-400 animate-pulse" : "text-primary"}`} />
-                  <CardTitle className="text-2xl font-bold">Live Transcript</CardTitle>
+                  <CardTitle className="text-2xl font-bold">{voiceT("liveTranscript")}</CardTitle>
                 </div>
                 {callStatus === "active" && (
                   <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
@@ -240,7 +240,7 @@ export default function VoiceCallCenter() {
                     <div className="text-center">
                       <Zap className="w-16 h-16 text-primary/50 mx-auto mb-4" />
                       <p className="text-xl text-muted-foreground">
-                        Start a call to see live transcript
+                        Start a call to see {voiceT("liveTranscript")}
                       </p>
                     </div>
                   </div>

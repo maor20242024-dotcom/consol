@@ -50,67 +50,39 @@ export default function AdminPage() {
     };
 
     return (
-        <div className="min-h-screen bg-background text-foreground relative overflow-hidden" dir="rtl">
+        <div className="min-h-screen bg-background text-foreground relative overflow-hidden" dir={locale === "ar" ? "rtl" : "ltr"}>
             <div className="fixed inset-0 -z-10">
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-primary/10" />
                 <FloatingDots />
             </div>
 
-            <div className="flex h-screen">
-                {/* Sidebar */}
-                <aside className="w-80 bg-card/80 backdrop-blur-xl border-r border-border/50 p-8 shadow-2xl">
-                    <div className="flex items-center gap-4 mb-12">
-                        <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-2xl">
-                            <Crown className="w-10 h-10 text-primary-foreground" />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl font-bold text-gradient-gold">ADMIN</h1>
-                            <p className="text-muted-foreground text-sm">قيصر الإمبراطورية</p>
-                        </div>
-                    </div>
-
-                    <nav className="space-y-2 mb-12">
-                        {[
-                            { icon: BarChart3, label: "لوحة التحكم", path: "dashboard" },
-                            { icon: Users, label: "العملاء", path: "crm" },
-                            { icon: TrendingUp, label: "التقارير", path: "admin" },
-                            { icon: Settings, label: "الإعدادات", path: "settings" }
-                        ].map((item, i) => (
-                            <button
-                                key={i}
-                                onClick={() => router.push(`/${locale}/${item.path}`)}
-                                className="w-full flex items-center gap-4 px-6 py-4 rounded-2xl transition-all hover:bg-primary/20 hover:text-primary text-muted-foreground"
-                            >
-                                <item.icon className="w-6 h-6" />
-                                <span className="font-medium">{item.label}</span>
-                            </button>
-                        ))}
-                    </nav>
-
-                    <Button variant="outline" onClick={handleLogout} className="w-full glass">
-                        <LogOut className="w-5 h-5 ml-3" />
-                        تسجيل الخروج
-                    </Button>
-                </aside>
-
+            <div className="flex-1 overflow-auto">
                 {/* Main Content */}
-                <div className="flex-1 overflow-auto">
+                <div className="p-8">
                     {/* Top Bar */}
-                    <header className="sticky top-0 z-40 backdrop-blur-xl bg-background/80 border-b border-border/50 p-6">
+                    <header className="sticky top-0 z-40 backdrop-blur-xl bg-background/80 border-b border-border/50 pb-6 mb-6">
                         <div className="flex items-center justify-between">
-                            <h2 className="text-3xl font-bold text-gradient-gold">لوحة تحكم الإمبراطور</h2>
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg">
+                                    <Crown className="w-6 h-6 text-primary-foreground" />
+                                </div>
+                                <div>
+                                    <h2 className="text-2xl font-bold text-gradient-gold">Admin Dashboard</h2>
+                                    <p className="text-xs text-muted-foreground">{locale === "ar" ? "قيصر الإمبراطورية" : "System Administrator"}</p>
+                                </div>
+                            </div>
                             <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
-                                ✓ جميع الأنظمة نشطة
+                                ✓ {locale === "ar" ? "جميع الأنظمة نشطة" : "All Systems Active"}
                             </Badge>
                         </div>
                     </header>
 
-                    <main className="p-8 space-y-8">
+                    <main className="space-y-8">
                         {/* Statistics */}
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                             {[
                                 { label: "إجمالي العملاء", value: stats.totalLeads, color: "text-blue-400", icon: Users },
-                                { label: "المستخدمين", value: stats.totalUsers, color: "text-purple-400", icon: Users },
+                                { label: "المستخدمين", value: stats.totalUsers, color: "text-primary", icon: Users },
                                 { label: "الحملات", value: stats.totalCampaigns, color: "text-green-400", icon: TrendingUp },
                                 { label: "صحة النظام", value: `${systemHealth}%`, color: "text-yellow-400", icon: AlertCircle }
                             ].map((stat, i) => {

@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createBrowserClient, createServerClient } from '@supabase/ssr'
 
 // Validate required environment variables
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -15,14 +15,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
  * - Persists session in localStorage (browser only)
  * - Auto-refreshes expired tokens
  */
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
-        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-    }
-})
+export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey)
 
 /**
  * Supabase admin client for server-side operations
@@ -33,11 +26,13 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
  * - Audit all operations performed with this client
  */
 export const supabaseAdmin = serviceRoleKey
-    ? createClient(supabaseUrl, serviceRoleKey, {
-        auth: {
-            persistSession: false,
-            autoRefreshToken: false,
-        }
+    ? createServerClient(supabaseUrl, serviceRoleKey, {
+        cookies: {
+            getAll() {
+                return [];
+            },
+            setAll() {},
+        },
     })
     : (() => {
         console.warn('SUPABASE_SERVICE_ROLE_KEY not found. Admin operations will use standard client with RLS.');

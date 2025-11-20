@@ -44,90 +44,65 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-/* ========================== PRIME GATE LUXURY PALETTE ========================== */
+/* ========================== IMPERIUM ROYAL PALETTE (Gold & Dark Theme) ========================== */
 :root {
-  /* Radius فخم موحد */
-  --radius: 0.75rem;          /* 12px – أكبر شوية عشان الفخامة */
-
-  /* ألوان أساسية (Light Mode – مش هنستخدمه أبدًا لكن موجود للكمال) */
-  --background: oklch(98% 0.005 240);
-  --foreground: oklch(15% 0.03 240);
-  --card: oklch(99% 0.003 240);
-  --card-foreground: oklch(15% 0.03 240);
-  --popover: oklch(99% 0.003 240);
-  --popover-foreground: oklch(15% 0.03 240);
-
-  /* Prime Gold & Dubai Luxury Colors */
-  --primary: oklch(68% 0.18 80);           /* ذهبي فاخر */
-  --primary-foreground: oklch(98% 0.02 80);
-  --secondary: oklch(18% 0.02 240);
-  --secondary-foreground: oklch(95% 0.01 240);
-  --muted: oklch(16% 0.01 240);
-  --muted-foreground: oklch(60% 0.02 240);
-  --accent: oklch(22% 0.03 260);
-  --accent-foreground: oklch(95% 0.01 240);
-  --destructive: oklch(55% 0.25 25);
-  
-  --border: oklch(25% 0.03 240 / 0.15);
-  --input: oklch(25% 0.03 240 / 0.2);
-  --ring: oklch(70% 0.15 80);              /* حلقة الـ focus ذهبية */
-
-  /* Charts – ألوان دبي الفاخرة */
-  --chart-1: oklch(68% 0.18 80);    /* Gold */
-  --chart-2: oklch(65% 0.22 190);   /* Teal */
-  --chart-3: oklch(70% 0.20 300);   /* Purple */
-  --chart-4: oklch(60% 0.25 25);    /* Red-Orange */
-  --chart-5: oklch(72% 0.15 140);   /* Emerald */
-
-  /* Sidebar Colors */
-  --sidebar: oklch(12% 0.02 240);
-  --sidebar-foreground: oklch(92% 0.01 240);
-  --sidebar-primary: oklch(68% 0.18 80);
-  --sidebar-primary-foreground: oklch(12% 0.02 240);
-  --sidebar-accent: oklch(18% 0.03 240);
-  --sidebar-accent-foreground: oklch(90% 0.01 240);
-  --sidebar-border: oklch(25% 0.03 240 / 0.2);
-  --sidebar-ring: oklch(68% 0.18 80);
+  --radius: 1rem;
+  --background: #030714;
+  --foreground: #f5f7ff;
+  --panel: rgba(14, 18, 36, 0.9);
+  --panel-foreground: #ffffff;
+  --panel-soft: rgba(17, 24, 39, 0.95);
+  --border-soft: rgba(255, 255, 255, 0.12);
+  --primary: #D4AF37;
+  --primary-dark: #AA8C2C;
+  --primary-light: #E5C158;
+  --muted: #bfc5d9;
+  --secondary: #0f172a;
+  --accent-teal: #2dd4bf;
+  --destructive: #f97316;
+  --ring: rgba(212, 175, 55, 0.4);
+  --sidebar: #060a1a;
+  --sidebar-foreground: #f6f8ff;
+  --sidebar-primary: #D4AF37;
+  --sidebar-primary-active: rgba(212, 175, 55, 0.2);
+  --sidebar-border: rgba(212, 175, 55, 0.15);
+  --chart-1: #D4AF37;
+  --chart-2: #E5C158;
+  --chart-3: #AA8C2C;
+  --chart-4: #ea580c;
+  --chart-5: #38bdf8;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--panel);
+  --color-card-foreground: var(--panel-foreground);
+  --color-popover: var(--panel);
+  --color-popover-foreground: var(--panel-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-border: var(--border-soft);
+  --color-input: rgba(255, 255, 255, 0.08);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-foreground: #030714;
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: #eef2ff;
+  --color-muted: var(--muted);
+  --color-muted-foreground: #b0b5c3;
+  --color-destructive: var(--destructive);
 }
 
-.dark {
-  /* كل حاجة هنا Dark – لأننا نعيش في الظلام يا ملك */
-  --background: oklch(8% 0.01 240);
-  --foreground: oklch(94% 0.01 240);
-  --card: oklch(12% 0.02 240);
-  --card-foreground: oklch(94% 0.01 240);
-  --popover: oklch(12% 0.02 240);
-  --popover-foreground: oklch(94% 0.01 240);
-
-  --primary: oklch(68% 0.18 80);           /* الذهبي هو الـ Primary في الـ Dark */
-  --primary-foreground: oklch(12% 0.02 240);
-  --secondary: oklch(16% 0.02 240);
-  --secondary-foreground: oklch(90% 0.01 240);
-  --muted: oklch(14% 0.015 240);
-  --muted-foreground: oklch(65% 0.02 240);
-  --accent: oklch(18% 0.03 260);
-  --accent-foreground: oklch(92% 0.01 240);
-  --destructive: oklch(55% 0.25 25);
-
-  --border: oklch(25% 0.03 240 / 0.18);
-  --input: oklch(20% 0.03 240 / 0.3);
-  --ring: oklch(68% 0.18 80);
-
-  /* Charts نفس الألوان الفاخرة */
-  --chart-1: oklch(68% 0.18 80);
-  --chart-2: oklch(65% 0.22 190);
-  --chart-3: oklch(70% 0.20 300);
-  --chart-4: oklch(60% 0.25 25);
-  --chart-5: oklch(72% 0.15 140);
-
-  --sidebar: oklch(10% 0.02 240);
-  --sidebar-foreground: oklch(92% 0.01 240);
-  --sidebar-primary: oklch(68% 0.18 80);
-  --sidebar-primary-foreground: oklch(10% 0.02 240);
-  --sidebar-accent: oklch(16% 0.03 240);
-  --sidebar-accent-foreground: oklch(90% 0.01 240);
-  --sidebar-border: oklch(25% 0.03 240 / 0.2);
-  --sidebar-ring: oklch(68% 0.18 80);
+html.dark {
+  --background: #01030b;
+  --foreground: #f2f5ff;
+  --panel: rgba(13, 17, 37, 0.92);
+  --panel-soft: rgba(9, 12, 28, 0.95);
+  --border-soft: rgba(212, 175, 55, 0.1);
+  --sidebar: #040810;
+  --sidebar-border: rgba(212, 175, 55, 0.12);
+  --sidebar-primary-active: rgba(212, 175, 55, 0.25);
+  --primary-dark: #B8960D;
+  --color-muted-foreground: #9ca3af;
 }
 
 /* ========================== Base Layer – كل حاجة بتطلع فخمة ========================== */
@@ -143,8 +118,34 @@
   }
 
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background text-foreground antialiased font-sans;
     font-feature-settings: "rlig" 1, "calt" 1, "liga" 1;
+    letter-spacing: 0.3px;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-sans font-semibold;
+    letter-spacing: -0.5px;
+  }
+
+  h1 {
+    @apply text-3xl;
+    font-weight: 700;
+  }
+
+  h2 {
+    @apply text-2xl;
+    font-weight: 600;
+  }
+
+  h3 {
+    @apply text-xl;
+    font-weight: 600;
+  }
+
+  p {
+    @apply font-sans;
+    line-height: 1.6;
   }
 
   /* Scrollbar فاخرة */
@@ -164,18 +165,93 @@
 
 /* ========================== Custom Utilities ========================== */
 @layer utilities {
-  /* Gradient Text */
+  /* Gradient Text - Imperium Royal Gold */
   .text-gradient-gold {
-    @apply bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, #E5C158, #D4AF37);
+    background-clip: text;
+    color: transparent;
   }
 
   /* Glass Effect */
   .glass {
-    @apply bg-card/50 backdrop-blur-xl border border-border/50 shadow-2xl;
+    background: rgba(14, 18, 36, 0.7);
+    backdrop-filter: blur(32px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    box-shadow: 0 30px 45px rgba(0, 0, 0, 0.6);
   }
 
   /* Luxury Card Hover */
   .card-hover {
-    @apply transition-all duration-500 hover:-translate-y-3 hover:shadow-2xl hover:border-primary/30;
+    @apply transition-all duration-500 ease-out hover:-translate-y-2 hover:shadow-[0_25px_45px_rgba(0,0,0,0.6)] hover:border-primary;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 font-semibold text-sm uppercase tracking-[0.2em] text-gray-900 transition-all duration-300;
+    background: linear-gradient(135deg, #D4AF37, #AA8C2C);
+    box-shadow: 0 12px 30px rgba(212, 175, 55, 0.35);
+    border: 1px solid rgba(212, 175, 55, 0.2);
+  }
+
+  .btn-primary:hover {
+    background: linear-gradient(135deg, #E5C158, #D4AF37);
+    box-shadow: 0 16px 40px rgba(212, 175, 55, 0.5);
+    transform: translateY(-2px);
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm uppercase tracking-[0.2em] border border-neutral-500 text-neutral-200 transition-colors duration-300;
+    background: transparent;
+  }
+
+  .card-panel {
+    background: rgba(14, 18, 36, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 24px;
+    padding: 32px;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5);
+  }
+
+  .input-glass {
+    width: 100%;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(17, 24, 39, 0.8);
+    padding: 12px 16px;
+    font-size: 16px;
+    color: #f5f5f5;
+    backdrop-filter: blur(20px);
+  }
+
+  .input-glass::placeholder {
+    color: #6b7280;
+  }
+
+  .input-glass:focus {
+    border-color: #D4AF37;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.4);
+  }
+
+  .page-shell {
+    @apply w-full max-w-6xl mx-auto py-10 px-4 lg:px-0;
+  }
+
+  .section-title {
+    @apply text-3xl font-semibold tracking-tight mb-2;
+  }
+
+  .body-muted {
+    @apply text-sm text-muted-foreground;
+  }
+
+  .divider-glow {
+    height: 2px;
+    width: 96px;
+    border-radius: 9999px;
+    background: linear-gradient(to right, #D4AF37, #B8960D);
+    margin-top: 16px;
+    margin-bottom: 24px;
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
   }
 }

@@ -3,6 +3,7 @@ import { getMessages, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import { Geist, Geist_Mono } from "next/font/google";
+import { AppSidebar } from "@/components/app-sidebar";
 
 const geistSans = Geist({
     variable: "--font-geist-sans",
@@ -45,7 +46,15 @@ export default async function LocaleLayout({
             </head>
             <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased bg-background text-foreground min-h-screen`}>
                 <NextIntlClientProvider locale={locale} messages={messages}>
-                    {children}
+                    <div className="flex h-screen">
+                        {/* Main Content Area */}
+                        <main className="flex-1 overflow-auto">
+                            {children}
+                        </main>
+                        
+                        {/* Sidebar on the right */}
+                        <AppSidebar />
+                    </div>
                 </NextIntlClientProvider>
             </body>
         </html>

@@ -10,12 +10,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { PageShell } from "@/components/page-shell";
 import {
     Upload,
     Type,
     Sparkles,
     Send,
-    ArrowLeft,
     Video,
     Loader2,
 } from "lucide-react";
@@ -245,27 +245,16 @@ export function AdCreatorContent() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-6 relative overflow-hidden">
+        <div className="min-h-screen bg-background p-6 relative overflow-hidden" dir={locale === "ar" ? "rtl" : "ltr"}>
             <FloatingDots />
             <div className="max-w-4xl mx-auto relative z-10">
-                <div className="flex items-center justify-between mb-8">
-                    <div>
-                        <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-2">
-                            {t("adCreator")}
-                        </h1>
-                        <p className="text-gray-400">{t("createNewCampaign")}</p>
-                    </div>
-                    <Button
-                        onClick={() => router.back()}
-                        variant="outline"
-                        className="border-purple-500 hover:bg-purple-500/10"
-                    >
-                        <ArrowLeft className="w-4 h-4 mr-2" />
-                        {t("cancel")}
-                    </Button>
-                </div>
-
-                <Card className="bg-slate-800/50 border-purple-500/20 backdrop-blur">
+                <PageShell
+                    title={t("adCreator")}
+                    subtitle={t("createNewCampaign")}
+                    showBackButton
+                    variant="gradient"
+                >
+                    <Card className="bg-slate-800/50 border-primary/20 backdrop-blur">
                     <CardContent className="p-6">
                         <Tabs value={activeTab} onValueChange={setActiveTab}>
                             <TabsList className="bg-slate-700/50 mb-6">
@@ -295,7 +284,7 @@ export function AdCreatorContent() {
                                                 disabled={aiLoading === "headline" || aiLoading === "description"}
                                                 size="sm"
                                                 variant="outline"
-                                                className="border-purple-500/50 hover:bg-purple-500/10 h-8"
+                                                className="border-primary/50 hover:bg-primary/10 h-8"
                                             >
                                                 {aiLoading === "headline" ? (
                                                     <>
@@ -336,7 +325,7 @@ export function AdCreatorContent() {
                                                 disabled={aiLoading === "description" || aiLoading === "headline"}
                                                 size="sm"
                                                 variant="outline"
-                                                className="border-purple-500/50 hover:bg-purple-500/10 h-8"
+                                                className="border-primary/50 hover:bg-primary/10 h-8"
                                             >
                                                 {aiLoading === "description" ? (
                                                     <>
@@ -391,7 +380,7 @@ export function AdCreatorContent() {
 
                             <TabsContent value="media">
                                 <div className="space-y-4">
-                                    <div className="border-2 border-dashed border-purple-500/30 rounded-lg p-8 text-center hover:border-purple-500/50 transition cursor-pointer">
+                                    <div className="border-2 border-dashed border-primary/30 rounded-lg p-8 text-center hover:border-primary/50 transition cursor-pointer">
                                         <input
                                             type="file"
                                             multiple
@@ -401,7 +390,7 @@ export function AdCreatorContent() {
                                             id="file-upload"
                                         />
                                         <label htmlFor="file-upload" className="cursor-pointer">
-                                            <Upload className="w-12 h-12 text-purple-400 mx-auto mb-2" />
+                                            <Upload className="w-12 h-12 text-primary mx-auto mb-2" />
                                             <p className="text-gray-400">
                                                 {t("dragAndDrop")}
                                             </p>
@@ -420,9 +409,9 @@ export function AdCreatorContent() {
                                                 >
                                                     <div className="flex items-center">
                                                         {asset.type === "video" ? (
-                                                            <Video className="w-4 h-4 text-purple-400 mr-2" />
+                                                            <Video className="w-4 h-4 text-primary mr-2" />
                                                         ) : (
-                                                            <Upload className="w-4 h-4 text-purple-400 mr-2" />
+                                                            <Upload className="w-4 h-4 text-primary mr-2" />
                                                         )}
                                                         <span className="text-sm text-gray-300">
                                                             {asset.filename}
@@ -456,7 +445,7 @@ export function AdCreatorContent() {
                                             <p className="text-sm text-gray-300 mb-4">
                                                 {adData.description || "Your description here"}
                                             </p>
-                                            <Button className="w-full bg-purple-600 hover:bg-purple-700">
+                                            <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
                                                 {adData.callToAction.replace("_", " ")}
                                             </Button>
                                         </div>
@@ -470,7 +459,7 @@ export function AdCreatorContent() {
                                 onClick={() => setActiveTab("media")}
                                 variant="outline"
                                 disabled={activeTab === "content"}
-                                className="border-purple-500/20"
+                                className="border-primary/20"
                             >
                                 {t("previous")}
                             </Button>
@@ -478,7 +467,7 @@ export function AdCreatorContent() {
                                 <Button
                                     onClick={handleCreateAd}
                                     disabled={loading}
-                                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                                    className="bg-gradient-to-r from-primary to-primary/70 hover:from-primary/90 hover:to-primary/60 text-primary-foreground font-semibold"
                                 >
                                     <Send className="w-4 h-4 mr-2" />
                                     {loading ? t("creating") : t("create")}
@@ -486,14 +475,15 @@ export function AdCreatorContent() {
                             ) : (
                                 <Button
                                     onClick={() => setActiveTab("preview")}
-                                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                                    className="bg-gradient-to-r from-primary to-primary/70 hover:from-primary/90 hover:to-primary/60 text-primary-foreground font-semibold"
                                 >
                                     {t("preview")}
                                 </Button>
                             )}
                         </div>
                     </CardContent>
-                </Card>
+                    </Card>
+                </PageShell>
             </div>
         </div>
     );

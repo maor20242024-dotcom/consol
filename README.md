@@ -8,6 +8,16 @@
 [![Prisma](https://img.shields.io/badge/Prisma-6.11.1-blue)](https://www.prisma.io/)
 [![License](https://img.shields.io/badge/License-Proprietary-red)]()
 
+---
+
+## 🚀 Quick Links
+
+- **Deploy Now**: [QUICK_DEPLOY.md](./QUICK_DEPLOY.md) - Get deployed in 15 minutes!
+- **Full Deployment Guide**: [DEPLOYMENT.md](./DEPLOYMENT.md)
+- **Development Setup**: See [Quick Start](#-quick-start) below
+
+---
+
 ## 📋 About This Project
 
 IMPERIUM GATE is a bilingual (EN/AR) **CRM and Instagram Ads management platform** designed for luxury property marketing. Built with **Next.js 15 (App Router)**, **Supabase**, and **Prisma**, it features:

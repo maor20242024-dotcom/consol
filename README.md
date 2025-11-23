@@ -107,18 +107,22 @@ npm run db:studio    # Open Prisma Studio (visual DB browser)
 
 ## 🚢 Deployment
 
-### Vercel (Recommended)
+**📖 Complete Deployment Guide: [DEPLOYMENT.md](./DEPLOYMENT.md)**
+
+### Quick Deploy to Vercel (Recommended)
 
 1. Push code to your Git repository
 2. Connect your repo to Vercel: https://vercel.com/new
-3. Add environment variables in Vercel Settings
+3. Add environment variables in Vercel Settings (see `.env.example`)
 4. Deploy automatically on push to main
 
-### Manual Deployment
+### Other Deployment Options
 
-```bash
-npx vercel --prod
-```
+- **Docker**: Use included `Dockerfile` and `docker-compose.yml`
+- **Netlify/Railway**: See [DEPLOYMENT.md](./DEPLOYMENT.md) for guides
+- **Manual**: `npx vercel --prod`
+
+**📋 Pre-deployment Checklist: [DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md)**
 
 ## 📚 Documentation
 

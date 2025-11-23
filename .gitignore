@@ -41,3 +41,21 @@ next-env.d.ts
 
 # prisma
 prisma/db/
+
+# Docker
+.dockerignore
+
+# Deployment
+.vercel/
+.netlify/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+

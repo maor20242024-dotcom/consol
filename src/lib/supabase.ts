@@ -1,41 +1,36 @@
 import { createBrowserClient, createServerClient } from '@supabase/ssr'
 
-// Validate required environment variables
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+export const supabaseUrl = requireEnv('NEXT_PUBLIC_SUPABASE_URL', process.env.NEXT_PUBLIC_SUPABASE_URL)
+export const supabaseAnonKey = requireEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Missing required Supabase environment variables: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY')
+function requireEnv(name: string, value?: string) {
+    if (!value) {
+        throw new Error(`Missing required Supabase environment variable: ${name}`)
+    }
+    return value
 }
 
 /**
  * Supabase client for client-side operations
- * - Respects Row Level Security (RLS) policies
- * - Persists session in localStorage (browser only)
- * - Auto-refreshes expired tokens
  */
 export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey)
 
 /**
- * Supabase admin client for server-side operations
- * ⚠️ WARNING: This client bypasses RLS policies using SERVICE_ROLE_KEY
- * - ONLY use on the server side (API routes, server components)
- * - NEVER expose this to the client
- * - Use only when administrative access is explicitly required
- * - Audit all operations performed with this client
+ * Creates a Supabase admin client for server-side operations
  */
-export const supabaseAdmin = serviceRoleKey
-    ? createServerClient(supabaseUrl, serviceRoleKey, {
+export function createAdminClient() {
+    if (!serviceRoleKey) {
+        throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY. Server-side operations cannot proceed without it.')
+    }
+
+    return createServerClient(supabaseUrl, serviceRoleKey, {
         cookies: {
             getAll() {
-                return [];
+                return []
             },
             setAll() {},
         },
     })
-    : (() => {
-        console.warn('SUPABASE_SERVICE_ROLE_KEY not found. Admin operations will use standard client with RLS.');
-        return supabase;
-    })()
+}
 

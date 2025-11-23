@@ -1,11 +1,14 @@
 {
   "overview": "نظرة عامة",
   "aiAssistant": "المساعد الذكي",
-  "campaigns": "الحملات",
+  "campaigns": "CRM",
   "calls": "المكالمات",
   "data": "البيانات",
   "adManager": "مدير الإعلانات",
   "adCreator": "منشئ الإعلانات",
+  "campaignLabel": "الحملة",
+  "selectCampaign": "اختر حملة",
+  "noCampaigns": "لا توجد حملات متاحة",
   "analytics": "التحليلات",
   "settings": "الإعدادات",
   "logout": "تسجيل الخروج",
@@ -18,7 +21,7 @@
     "runningAds": "إعلانات جارية"
   },
   "CRM": {
-    "title": "إدارة علاقات العملاء",
+    "title": "CRM",
     "description": "متابعة العملاء وإغلاق الصفقات.",
     "addLead": "إضافة عميل محتمل",
     "name": "الاسم",
@@ -35,8 +38,10 @@
     "toastSuccess": "تم حفظ العميل بنجاح",
     "toastSuccessMsg": "تم إضافة العميل المحتمل بنجاح",
     "toastError": "حدث خطأ",
+    "toastRequiredFields": "الاسم ورقم الهاتف مطلوبان",
     "save": "حفظ",
     "cancel": "إلغاء",
+    "saving": "جاري الحفظ...",
     "new": "جديد",
     "total": "الإجمالي"
   },
@@ -49,6 +54,7 @@
     "budget": "الميزانية",
     "ads": "الإعلانات",
     "actions": "الإجراءات",
+    "loading": "جاري تحميل الحملات…",
     "statuses": {
       "draft": "مسودة",
       "active": "نشطة",

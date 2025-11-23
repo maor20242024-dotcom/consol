@@ -1,11 +1,14 @@
 {
   "overview": "Overview",
   "aiAssistant": "AI Assistant",
-  "campaigns": "Campaigns",
+  "campaigns": "CRM",
   "calls": "Calls",
   "data": "Data",
   "adManager": "Ad Manager",
   "adCreator": "Ad Creator",
+  "campaignLabel": "Campaign",
+  "selectCampaign": "Select a campaign",
+  "noCampaigns": "No campaigns available",
   "analytics": "Analytics",
   "settings": "Settings",
   "logout": "Logout",
@@ -63,7 +66,7 @@
     "comingSoon": "Coming soon..."
   },
   "CRM": {
-    "title": "Customer Relationship Management",
+    "title": "CRM",
     "description": "Track leads and close deals efficiently.",
     "addLead": "Add Lead",
     "name": "Name",
@@ -78,8 +81,10 @@
     "toastSuccess": "Lead saved",
     "toastSuccessMsg": "New lead added successfully",
     "toastError": "Something went wrong",
+    "toastRequiredFields": "Name and phone are required",
     "save": "Save",
     "cancel": "Cancel",
+    "saving": "Saving...",
     "new": "New",
     "total": "Total"
   },
@@ -92,6 +97,7 @@
     "budget": "Budget",
     "ads": "Ads",
     "actions": "Actions",
+    "loading": "Loading campaigns…",
     "statuses": {
       "draft": "Draft",
       "active": "Active",

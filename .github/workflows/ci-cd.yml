@@ -119,7 +119,7 @@ jobs:
       
       - name: Deploy to Vercel (Preview)
         uses: amondnet/vercel-action@v25
-        if: ${{ secrets.VERCEL_TOKEN != '' }}
+        if: ${{ secrets.VERCEL_TOKEN }}
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
@@ -139,7 +139,7 @@ jobs:
       
       - name: Deploy to Vercel (Production)
         uses: amondnet/vercel-action@v25
-        if: ${{ secrets.VERCEL_TOKEN != '' }}
+        if: ${{ secrets.VERCEL_TOKEN }}
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
@@ -147,7 +147,7 @@ jobs:
           vercel-args: '--prod'
       
       - name: Notify deployment success
-        if: ${{ secrets.VERCEL_TOKEN != '' }}
+        if: ${{ secrets.VERCEL_TOKEN }}
         run: |
           echo "🚀 Deployment to production completed successfully!"
           echo "Check your Vercel dashboard for deployment details"

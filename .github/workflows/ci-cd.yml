@@ -106,17 +106,12 @@ jobs:
       - name: Run npm audit
         run: npm audit --audit-level=moderate
         continue-on-error: true
-      
-      - name: Check for known vulnerabilities
-        run: |
-          npx audit-ci --moderate
-        continue-on-error: true
 
   deploy-preview:
     name: Deploy Preview (Vercel)
     runs-on: ubuntu-latest
     needs: [build, type-check]
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && secrets.VERCEL_TOKEN != ''
     
     steps:
       - name: Checkout code
@@ -130,13 +125,12 @@ jobs:
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
           vercel-args: '--prod false'
           github-comment: true
-        if: env.VERCEL_TOKEN != ''
 
   deploy-production:
     name: Deploy to Production (Vercel)
     runs-on: ubuntu-latest
     needs: [build, type-check]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.VERCEL_TOKEN != ''
     
     steps:
       - name: Checkout code
@@ -149,7 +143,6 @@ jobs:
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
           vercel-args: '--prod'
-        if: env.VERCEL_TOKEN != ''
       
       - name: Notify deployment success
         run: |

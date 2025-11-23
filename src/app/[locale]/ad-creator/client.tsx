@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { PageShell } from "@/components/page-shell";
 import {
@@ -31,6 +38,17 @@ const FloatingDots = dynamic(
     { ssr: false }
 );
 
+interface Campaign {
+    id: string;
+    name: string;
+}
+
+interface UploadedAsset {
+    url: string;
+    filename: string;
+    type: "image" | "video";
+}
+
 export function AdCreatorContent() {
     const t = useTranslations();
     const router = useRouter();
@@ -38,9 +56,12 @@ export function AdCreatorContent() {
     const searchParams = useSearchParams();
     const { toast } = useToast();
     const locale = pathname.split("/")[1] || "en";
-    const campaignId = searchParams.get("campaignId");
+    const campaignIdFromUrl = searchParams.get("campaignId");
 
     const [activeTab, setActiveTab] = useState("content");
+    const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+    const [selectedCampaignId, setSelectedCampaignId] = useState(campaignIdFromUrl || "");
+    const [loadingCampaigns, setLoadingCampaigns] = useState(true);
     const [adData, setAdData] = useState({
         headline: "",
         description: "",
@@ -48,7 +69,36 @@ export function AdCreatorContent() {
     });
     const [loading, setLoading] = useState(false);
     const [aiLoading, setAiLoading] = useState<"headline" | "description" | null>(null);
-    const [uploadedAssets, setUploadedAssets] = useState<any[]>([]);
+    const [uploadedAssets, setUploadedAssets] = useState<UploadedAsset[]>([]);
+
+    // Fetch campaigns on mount
+    useEffect(() => {
+        const fetchCampaigns = async () => {
+            try {
+                const response = await fetch("/api/instagram/campaigns");
+                if (response.ok) {
+                    const data = await response.json();
+                    setCampaigns(data.campaigns || []);
+                    
+                    // If no campaign selected and campaigns exist, select the first one
+                    if (!selectedCampaignId && data.campaigns?.length > 0) {
+                        setSelectedCampaignId(data.campaigns[0].id);
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to fetch campaigns:", error);
+                toast({
+                    title: "Error",
+                    description: "Failed to load campaigns",
+                    variant: "destructive",
+                });
+            } finally {
+                setLoadingCampaigns(false);
+            }
+        };
+
+        fetchCampaigns();
+    }, []);
 
     const handleAISuggestHeadline = async () => {
         setAiLoading("headline");
@@ -120,9 +170,10 @@ export function AdCreatorContent() {
         try {
             for (const file of files) {
                 const formData = new FormData();
+                const assetType = file.type.startsWith("video") ? "video" : "image";
                 formData.append("file", file);
-                formData.append("adId", campaignId || "temp");
-                formData.append("assetType", file.type.startsWith("video") ? "video" : "image");
+                formData.append("adId", selectedCampaignId || "temp");
+                formData.append("assetType", assetType);
 
                 try {
                     const response = await fetch("/api/instagram/assets/upload", {
@@ -130,13 +181,33 @@ export function AdCreatorContent() {
                         body: formData,
                     });
 
-                    if (response.ok) {
-                        const asset = await response.json();
-                        setUploadedAssets((prev) => [...prev, asset]);
-                        successCount++;
-                    } else {
+                    if (!response.ok) {
                         errorCount++;
+                        continue;
                     }
+
+                    const assetPayload = await response.json();
+                    const assetUrl =
+                        assetPayload.url ||
+                        assetPayload.asset?.url ||
+                        assetPayload.asset?.thumbnail;
+
+                    if (!assetUrl) {
+                        console.warn("Asset upload returned no URL", file.name);
+                        errorCount++;
+                        continue;
+                    }
+
+                    setUploadedAssets((prev) => [
+                        ...prev,
+                        {
+                            url: assetUrl,
+                            type: assetType,
+                            filename: file.name,
+                        },
+                    ]);
+
+                    successCount++;
                 } catch (error) {
                     console.error("Upload error for file:", file.name, error);
                     errorCount++;
@@ -188,6 +259,15 @@ export function AdCreatorContent() {
             return;
         }
 
+        if (!selectedCampaignId) {
+            toast({
+                title: t("validation"),
+                description: t("selectCampaign") + " " + t("validation.required"),
+                variant: "destructive",
+            });
+            return;
+        }
+
         if (uploadedAssets.length === 0) {
             toast({
                 title: t("validation"),
@@ -197,13 +277,18 @@ export function AdCreatorContent() {
             return;
         }
 
+        const assetsPayload = uploadedAssets.map((asset) => ({
+            url: asset.url,
+            assetType: asset.type,
+        }));
+
         setLoading(true);
         try {
             const response = await fetch("/api/instagram/ads", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    campaignId: campaignId || "",
+                    campaignId: selectedCampaignId,
                     headline: adData.headline,
                     description: adData.description,
                     callToAction: adData.callToAction,
@@ -213,6 +298,7 @@ export function AdCreatorContent() {
                     clicks: 0,
                     conversions: 0,
                     spend: "0",
+                    assets: assetsPayload,
                 }),
             });
 
@@ -274,6 +360,52 @@ export function AdCreatorContent() {
 
                             <TabsContent value="content">
                                 <div className="space-y-4">
+
+                                    <div>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <label className="text-sm font-medium text-gray-300">
+                                                {t("campaignLabel")}
+                                            </label>
+                                            {loadingCampaigns && (
+                                                <span className="text-xs text-gray-400">
+                                                    Loading campaigns...
+                                                </span>
+                                            )}
+                                        </div>
+                                        <Select
+                                            value={selectedCampaignId}
+                                            onValueChange={setSelectedCampaignId}
+                                            aria-label={t("campaignLabel")}
+                                        >
+                                            <SelectTrigger className="w-full bg-slate-700/50 border-slate-600 text-white">
+                                                <SelectValue placeholder={t("selectCampaign") || "Select a campaign"} />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-slate-800 text-white">
+                                                {loadingCampaigns ? (
+                                                    <SelectItem value="loading" disabled>
+                                                        Loading campaigns...
+                                                    </SelectItem>
+                                                ) : campaigns.length === 0 ? (
+                                                    <SelectItem value="no-campaigns" disabled>
+                                                        {t("noCampaigns")}
+                                                    </SelectItem>
+                                                ) : (
+                                                    campaigns.map((campaign) => (
+                                                        <SelectItem key={campaign.id} value={campaign.id}>
+                                                            {campaign.name}
+                                                        </SelectItem>
+                                                    ))
+                                                )}
+                                            </SelectContent>
+                                        </Select>
+
+                                        {!loadingCampaigns && campaigns.length === 0 && (
+                                            <p className="text-xs text-gray-400 mt-1">
+                                                {t("noCampaigns")}
+                                            </p>
+                                        )}
+                                    </div>
+
                                     <div>
                                         <div className="flex items-center justify-between mb-2">
                                             <label className="text-sm font-medium text-gray-300">
@@ -428,9 +560,9 @@ export function AdCreatorContent() {
                             </TabsContent>
 
                             <TabsContent value="preview">
-                                <div className="bg-gradient-to-b from-slate-700/30 to-slate-900/30 rounded-lg p-6 border border-slate-700">
+                                <div className="bg-linear-to-b from-slate-700/30 to-slate-900/30 rounded-lg p-6 border border-slate-700">
                                     <div className="max-w-sm mx-auto">
-                                        <div className="bg-gradient-to-b from-slate-600 to-slate-800 rounded-lg p-4 text-center">
+                                        <div className="bg-linear-to-b from-slate-600 to-slate-800 rounded-lg p-4 text-center">
                                             {uploadedAssets.length > 0 ? (
                                                 <div className="bg-slate-700 rounded h-48 flex items-center justify-center mb-4">
                                                     <span className="text-gray-500">
@@ -467,7 +599,7 @@ export function AdCreatorContent() {
                                 <Button
                                     onClick={handleCreateAd}
                                     disabled={loading}
-                                    className="bg-gradient-to-r from-primary to-primary/70 hover:from-primary/90 hover:to-primary/60 text-primary-foreground font-semibold"
+                                    className="bg-linear-to-r from-primary to-primary/70 hover:from-primary/90 hover:to-primary/60 text-primary-foreground font-semibold"
                                 >
                                     <Send className="w-4 h-4 mr-2" />
                                     {loading ? t("creating") : t("create")}
@@ -475,7 +607,7 @@ export function AdCreatorContent() {
                             ) : (
                                 <Button
                                     onClick={() => setActiveTab("preview")}
-                                    className="bg-gradient-to-r from-primary to-primary/70 hover:from-primary/90 hover:to-primary/60 text-primary-foreground font-semibold"
+                                    className="bg-linear-to-r from-primary to-primary/70 hover:from-primary/90 hover:to-primary/60 text-primary-foreground font-semibold"
                                 >
                                     {t("preview")}
                                 </Button>

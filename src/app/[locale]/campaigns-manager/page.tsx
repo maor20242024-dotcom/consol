@@ -113,7 +113,7 @@ export default function CampaignsManagerPage() {
     return (
         <div className="min-h-screen bg-background text-foreground relative overflow-hidden">
             <div className="fixed inset-0 -z-10">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-primary/10" />
+                <div className="absolute inset-0 bg-linear-to-br from-primary/5 via-background to-primary/10" />
                 <FloatingDots />
             </div>
 

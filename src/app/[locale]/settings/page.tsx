@@ -121,7 +121,7 @@ export default function SettingsPage() {
                                         <option value="UTC">UTC</option>
                                     </select>
                                 </div>
-                                <Button className="bg-gradient-to-r from-primary to-primary/70 hover:from-primary/90 hover:to-primary/60 text-primary-foreground font-semibold">
+                                <Button className="bg-linear-to-r from-primary to-primary/70 hover:from-primary/90 hover:to-primary/60 text-primary-foreground font-semibold">
                                     {locale === "ar" ? "حفظ التغييرات" : "Save Changes"}
                                 </Button>
                             </CardContent>

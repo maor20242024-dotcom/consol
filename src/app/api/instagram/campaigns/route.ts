@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
         let query = supabase
             .from("InstagramCampaign")
-            .select("*")
+            .select("id, name")
             .order("createdAt", { ascending: false });
 
         if (accountId) {

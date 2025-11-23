@@ -22,6 +22,7 @@ export default function CRMPage() {
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
     const [formData, setFormData] = useState({ name: "", phone: "", email: "", budget: "" });
+    const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         fetchLeads();
@@ -45,21 +46,34 @@ export default function CRMPage() {
     };
 
     const addLead = async () => {
-        if (!formData.name || !formData.phone) return;
+        if (!formData.name || !formData.phone) {
+            toast({
+                title: t("toastError"),
+                description: t("toastRequiredFields"),
+                variant: "destructive"
+            });
+            return;
+        }
 
+        setIsSaving(true);
         try {
-            const { error } = await supabase.from("leads").insert([
-                {
+            const res = await fetch("/api/leads", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
                     name: formData.name,
                     phone: formData.phone,
                     email: formData.email,
-                    budget: formData.budget,
-                    status: "hot",
-                    source: "CRM"
-                }
-            ]);
+                    budget: formData.budget
+                })
+            });
 
-            if (error) throw error;
+            const payload = await res.json();
+
+            if (!res.ok) {
+                throw new Error(payload?.error ?? t("toastError"));
+            }
+
             setFormData({ name: "", phone: "", email: "", budget: "" });
             setShowForm(false);
             fetchLeads();
@@ -74,6 +88,8 @@ export default function CRMPage() {
                 description: (error as Error).message,
                 variant: "destructive"
             });
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -102,7 +118,7 @@ export default function CRMPage() {
     return (
         <div className="min-h-screen bg-background text-foreground relative overflow-hidden">
             <div className="fixed inset-0 -z-10">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-primary/10" />
+                <div className="absolute inset-0 bg-linear-to-br from-primary/5 via-background to-primary/10" />
                 <FloatingDots />
             </div>
 
@@ -150,8 +166,8 @@ export default function CRMPage() {
                                     className="h-12 text-lg"
                                 />
                                 <div className="flex gap-4">
-                                    <Button onClick={addLead} className="flex-1 h-12 text-lg">
-                                        {t("save")}
+                                    <Button onClick={addLead} className="flex-1 h-12 text-lg" disabled={isSaving}>
+                                        {isSaving ? t("saving") : t("save")}
                                     </Button>
                                     <Button variant="outline" onClick={() => setShowForm(false)} className="flex-1 h-12 text-lg">
                                         {t("cancel")}

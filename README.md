@@ -8,6 +8,16 @@
 [![Prisma](https://img.shields.io/badge/Prisma-6.11.1-blue)](https://www.prisma.io/)
 [![License](https://img.shields.io/badge/License-Proprietary-red)]()
 
+---
+
+## 🚀 Quick Links
+
+- **Deploy Now**: [QUICK_DEPLOY.md](./QUICK_DEPLOY.md) - Get deployed in 15 minutes!
+- **Full Deployment Guide**: [DEPLOYMENT.md](./DEPLOYMENT.md)
+- **Development Setup**: See [Quick Start](#-quick-start) below
+
+---
+
 ## 📋 About This Project
 
 IMPERIUM GATE is a bilingual (EN/AR) **CRM and Instagram Ads management platform** designed for luxury property marketing. Built with **Next.js 15 (App Router)**, **Supabase**, and **Prisma**, it features:
@@ -107,18 +117,22 @@ npm run db:studio    # Open Prisma Studio (visual DB browser)
 
 ## 🚢 Deployment
 
-### Vercel (Recommended)
+**📖 Complete Deployment Guide: [DEPLOYMENT.md](./DEPLOYMENT.md)**
+
+### Quick Deploy to Vercel (Recommended)
 
 1. Push code to your Git repository
 2. Connect your repo to Vercel: https://vercel.com/new
-3. Add environment variables in Vercel Settings
+3. Add environment variables in Vercel Settings (see `.env.example`)
 4. Deploy automatically on push to main
 
-### Manual Deployment
+### Other Deployment Options
 
-```bash
-npx vercel --prod
-```
+- **Docker**: Use included `Dockerfile` and `docker-compose.yml`
+- **Netlify/Railway**: See [DEPLOYMENT.md](./DEPLOYMENT.md) for guides
+- **Manual**: `npx vercel --prod`
+
+**📋 Pre-deployment Checklist: [DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md)**
 
 ## 📚 Documentation
 

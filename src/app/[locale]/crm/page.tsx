@@ -1,119 +1,106 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { supabase } from "@/lib/supabase";
-import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageShell } from "@/components/page-shell";
-import { Plus, Trash2, Edit2, Phone, Mail } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Plus, LayoutGrid, List } from "lucide-react";
 import dynamic from "next/dynamic";
+import { KanbanBoard } from "@/components/crm/kanban-board";
+import { getLeads, getPipeline, getFilteredLeads } from "@/actions/crm"; // Updated import
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Lead, Stage } from "@/types/crm";
+import { LeadFilters } from "@/components/crm/lead-filters"; // Import LeadFilters
+
+type LeadWithRelations = Omit<Lead, 'pipeline' | 'stage' | 'campaign'> & {
+    pipeline: { id: string; name: string } | null;
+    stage: Stage | null;
+    campaign: { id: string; name: string } | null;
+};
+import { AddLeadDialog } from "@/components/crm/add-lead-dialog";
+import { LeadDetailsDialog } from "@/components/crm/lead-details-dialog";
+import { ImportLeadsDialog } from "@/components/crm/import-leads-dialog";
+import { LeadListView } from "@/components/crm/lead-list-view";
 
 const FloatingDots = dynamic(() => import("@/components/FloatingDots").then(m => m.FloatingDots), { ssr: false });
 
 export default function CRMPage() {
     const t = useTranslations("CRM");
-    const { toast } = useToast();
-    const [leads, setLeads] = useState<any[]>([]);
+    const [leads, setLeads] = useState<LeadWithRelations[]>([]);
+    const [stages, setStages] = useState<Stage[]>([]);
     const [loading, setLoading] = useState(true);
-    const [showForm, setShowForm] = useState(false);
-    const [formData, setFormData] = useState({ name: "", phone: "", email: "", budget: "" });
-    const [isSaving, setIsSaving] = useState(false);
+    const [view, setView] = useState<"kanban" | "list">("kanban");
+    const [addLeadOpen, setAddLeadOpen] = useState(false);
+    const [pipelineId, setPipelineId] = useState("");
+    const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+    const [detailsOpen, setDetailsOpen] = useState(false);
 
-    useEffect(() => {
-        fetchLeads();
-    }, []);
-
-    const fetchLeads = async () => {
+    // Initial fetch
+    const loadData = async () => {
         try {
-            const { data, error } = await supabase.from("leads").select("*").order("created_at", { ascending: false });
-            if (error) throw error;
-            setLeads(data || []);
+            const [fetchedResult, fetchedPipeline] = await Promise.all([
+                getFilteredLeads({}), // Use getFilteredLeads instead of getLeads
+                getPipeline()
+            ]);
+
+            const fetchedLeads = fetchedResult.leads || [];
+
+            // Transform fetchedLeads to LeadWithRelations format
+            const transformedLeads: LeadWithRelations[] = fetchedLeads.map((lead: any) => ({
+                ...lead,
+                email: lead.email || null,
+                expectedValue: typeof lead.expectedValue === 'object' ? Number(lead.expectedValue) : (lead.expectedValue ? Number(lead.expectedValue) : null),
+                pipeline: lead.pipeline ? {
+                    id: lead.pipeline.id,
+                    name: lead.pipeline.name
+                } : null,
+                stage: lead.stage,
+                campaign: lead.campaign,
+            }));
+            setLeads(transformedLeads);
+            setStages(fetchedPipeline.stages);
+            setPipelineId(fetchedPipeline.id);
         } catch (error) {
-            console.error("Error fetching leads:", error);
-            toast({
-                title: t("toastError"),
-                description: (error as Error).message,
-                variant: "destructive"
-            });
+            console.error("Failed to load CRM data", error);
         } finally {
             setLoading(false);
         }
     };
 
-    const addLead = async () => {
-        if (!formData.name || !formData.phone) {
-            toast({
-                title: t("toastError"),
-                description: t("toastRequiredFields"),
-                variant: "destructive"
-            });
-            return;
-        }
+    useEffect(() => {
+        loadData();
+    }, []);
 
-        setIsSaving(true);
+    const handleFiltersChange = useCallback(async (filters: any) => {
+        setLoading(true);
         try {
-            const res = await fetch("/api/leads", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    name: formData.name,
-                    phone: formData.phone,
-                    email: formData.email,
-                    budget: formData.budget
-                })
-            });
-
-            const payload = await res.json();
-
-            if (!res.ok) {
-                throw new Error(payload?.error ?? t("toastError"));
+            const result = await getFilteredLeads(filters);
+            if (result.success && result.leads) {
+                const transformedLeads: LeadWithRelations[] = result.leads.map((lead: any) => ({
+                    ...lead,
+                    email: lead.email || null,
+                    expectedValue: typeof lead.expectedValue === 'object' ? Number(lead.expectedValue) : (lead.expectedValue ? Number(lead.expectedValue) : null),
+                    pipeline: lead.pipeline ? {
+                        id: lead.pipeline.id,
+                        name: lead.pipeline.name
+                    } : null,
+                    stage: lead.stage,
+                    campaign: lead.campaign,
+                }));
+                // Use a functional update to ensure we aren't depending on stale state, though setLeads doesn't really depend on prev state here.
+                setLeads(transformedLeads);
             }
-
-            setFormData({ name: "", phone: "", email: "", budget: "" });
-            setShowForm(false);
-            fetchLeads();
-            toast({
-                title: t("toastSuccess"),
-                description: t("toastSuccessMsg")
-            });
         } catch (error) {
-            console.error("Error adding lead:", error);
-            toast({
-                title: t("toastError"),
-                description: (error as Error).message,
-                variant: "destructive"
-            });
+            console.error("Filter error:", error);
         } finally {
-            setIsSaving(false);
+            setLoading(false);
         }
-    };
+    }, []);
 
-    const deleteLead = async (id: string) => {
-        try {
-            const { error } = await supabase.from("leads").delete().eq("id", id);
-            if (error) throw error;
-            fetchLeads();
-            toast({
-                title: t("toastSuccess"),
-                description: t("toastSuccessMsg")
-            });
-        } catch (error) {
-            console.error("Error deleting lead:", error);
-            toast({
-                title: t("toastError"),
-                description: (error as Error).message,
-                variant: "destructive"
-            });
-        }
+    const handleViewDetails = (lead: Lead) => {
+        setSelectedLead(lead);
+        setDetailsOpen(true);
     };
-
-    const hotLeads = leads.filter((lead) => lead.status === "hot").length;
-    const warmLeads = leads.filter((lead) => lead.status === "warm").length;
 
     return (
         <div className="min-h-screen bg-background text-foreground relative overflow-hidden">
@@ -122,142 +109,76 @@ export default function CRMPage() {
                 <FloatingDots />
             </div>
 
-            <div className="relative">
+            <div className="relative h-screen flex flex-col">
                 <PageShell
                     title={t("title")}
                     description={t("description")}
                     variant="gradient"
                     actions={
-                        <Button onClick={() => setShowForm((prev) => !prev)} className="flex items-center gap-2 h-12 px-6 text-lg">
-                            <Plus className="w-5 h-5" />
-                            {t("addLead")}
-                        </Button>
+                        <div className="flex items-center gap-2">
+                            {/* Import/Export Dialog is self-contained with its button */}
+                            <ImportLeadsDialog onSuccess={loadData} />
+
+                            <Tabs value={view} onValueChange={(v) => setView(v as "kanban" | "list")} className="hidden md:block">
+                                <TabsList>
+                                    <TabsTrigger value="kanban"><LayoutGrid className="w-4 h-4 mr-2" />Board</TabsTrigger>
+                                    <TabsTrigger value="list"><List className="w-4 h-4 mr-2" />List</TabsTrigger>
+                                </TabsList>
+                            </Tabs>
+                            <Button
+                                className="flex items-center gap-2 h-10 px-4"
+                                onClick={() => setAddLeadOpen(true)}
+                            >
+                                <Plus className="w-4 h-4" />
+                                {t("addLead")}
+                            </Button>
+                        </div>
                     }
                 >
-                    {showForm && (
-                        <Card className="glass mb-8 p-6 border-primary/30">
-                            <CardHeader>
-                                <CardTitle>{t("addLead")}</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <Input
-                                    placeholder={t("name")}
-                                    value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    className="h-12 text-lg"
-                                />
-                                <Input
-                                    placeholder={t("phone")}
-                                    value={formData.phone}
-                                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                    className="h-12 text-lg"
-                                />
-                                <Input
-                                    placeholder={t("email")}
-                                    type="email"
-                                    value={formData.email}
-                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                    className="h-12 text-lg"
-                                />
-                                <Input
-                                    placeholder={t("budget")}
-                                    value={formData.budget}
-                                    onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
-                                    className="h-12 text-lg"
-                                />
-                                <div className="flex gap-4">
-                                    <Button onClick={addLead} className="flex-1 h-12 text-lg" disabled={isSaving}>
-                                        {isSaving ? t("saving") : t("save")}
-                                    </Button>
-                                    <Button variant="outline" onClick={() => setShowForm(false)} className="flex-1 h-12 text-lg">
-                                        {t("cancel")}
-                                    </Button>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    )}
+                    <div className="flex flex-col h-full gap-4">
+                        {/* Filters Section */}
+                        <div className="bg-card/50 backdrop-blur-sm p-4 rounded-xl border border-border/50">
+                            <LeadFilters onFiltersChange={handleFiltersChange} loading={loading} />
+                        </div>
 
-                    {loading ? (
-                        <div className="text-center text-muted-foreground py-12">{t("loading")}</div>
-                    ) : (
-                        <Card className="glass border-border/50">
-                            <CardContent className="p-0 overflow-x-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow className="border-b border-border/50">
-                                            <TableHead>{t("name")}</TableHead>
-                                            <TableHead>{t("phone")}</TableHead>
-                                            <TableHead>{t("email")}</TableHead>
-                                            <TableHead>{t("budget")}</TableHead>
-                                            <TableHead>{t("status")}</TableHead>
-                                            <TableHead>{t("actions")}</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {leads.map((lead: any) => {
-                                            const statusText =
-                                                lead.status === "hot" ? t("hot") : lead.status === "warm" ? t("warm") : t("new");
-                                            const badgeStyle =
-                                                lead.status === "hot"
-                                                    ? "bg-red-500/20 text-red-400"
-                                                    : lead.status === "warm"
-                                                        ? "bg-yellow-500/20 text-yellow-400"
-                                                        : "bg-blue-500/20 text-blue-400";
-
-                                            return (
-                                                <TableRow key={lead.id} className="border-b border-border/50 hover:bg-card/50">
-                                                    <TableCell className="font-medium">{lead.name}</TableCell>
-                                                    <TableCell className="flex items-center gap-2">
-                                                        <Phone className="w-4 h-4" />
-                                                        {lead.phone}
-                                                    </TableCell>
-                                                    <TableCell className="flex items-center gap-2">
-                                                        <Mail className="w-4 h-4" />
-                                                        {lead.email || "-"}
-                                                    </TableCell>
-                                                    <TableCell>{lead.budget || "-"}</TableCell>
-                                                    <TableCell>
-                                                        <Badge className={badgeStyle}>{statusText}</Badge>
-                                                    </TableCell>
-                                                    <TableCell className="flex gap-2">
-                                                        <Button variant="ghost" size="icon" disabled>
-                                                            <Edit2 className="w-4 h-4" />
-                                                        </Button>
-                                                        <Button variant="ghost" size="icon" onClick={() => deleteLead(lead.id)} className="text-red-400 hover:text-red-500">
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </Button>
-                                                    </TableCell>
-                                                </TableRow>
-                                            );
-                                        })}
-                                    </TableBody>
-                                </Table>
-                            </CardContent>
-                        </Card>
-                    )}
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-                        <Card className="glass p-6 text-center border-primary/30">
-                            <CardContent className="space-y-2">
-                                <div className="text-4xl font-bold text-primary">{hotLeads}</div>
-                                <p className="text-muted-foreground">{t("hot")}</p>
-                            </CardContent>
-                        </Card>
-                        <Card className="glass p-6 text-center border-primary/30">
-                            <CardContent className="space-y-2">
-                                <div className="text-4xl font-bold text-yellow-400">{warmLeads}</div>
-                                <p className="text-muted-foreground">{t("warm")}</p>
-                            </CardContent>
-                        </Card>
-                        <Card className="glass p-6 text-center border-primary/30">
-                            <CardContent className="space-y-2">
-                                <div className="text-4xl font-bold text-blue-400">{leads.length}</div>
-                                <p className="text-muted-foreground">{t("total")}</p>
-                            </CardContent>
-                        </Card>
+                        {loading ? (
+                            <div className="flex items-center justify-center h-64">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                            </div>
+                        ) : (
+                            <div className="flex-1 overflow-hidden">
+                                {view === "kanban" ? (
+                                    <KanbanBoard
+                                        initialStages={stages}
+                                        initialLeads={leads as Lead[]}
+                                        onViewDetails={handleViewDetails}
+                                    />
+                                ) : (
+                                    <LeadListView
+                                        leads={leads as Lead[]}
+                                        onViewDetails={handleViewDetails}
+                                        onRefresh={loadData}
+                                    />
+                                )}
+                            </div>
+                        )}
                     </div>
                 </PageShell>
             </div>
+
+            <AddLeadDialog
+                open={addLeadOpen}
+                onOpenChange={setAddLeadOpen}
+                pipelineId={pipelineId}
+                firstStageId={stages[0]?.id || ""}
+                onLeadCreated={loadData}
+            />
+
+            <LeadDetailsDialog
+                open={detailsOpen}
+                onOpenChange={setDetailsOpen}
+                lead={selectedLead}
+            />
         </div>
     );
 }

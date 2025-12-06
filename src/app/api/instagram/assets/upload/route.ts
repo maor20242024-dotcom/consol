@@ -11,13 +11,13 @@ export async function POST(req: NextRequest) {
     try {
         const formData = await req.formData();
         const file = formData.get("file") as File;
-        const adId = formData.get("adId") as string;
         const assetType = formData.get("assetType") as string;
+        const adId = (formData.get("adId") as string) || "posts"; // Default to 'posts' if no adId
         const altText = (formData.get("altText") as string) || null;
 
-        if (!file || !adId || !assetType) {
+        if (!file || !assetType) {
             return NextResponse.json(
-                { error: "file, adId, and assetType are required" },
+                { error: "file and assetType are required" },
                 { status: 400 }
             );
         }
@@ -50,17 +50,24 @@ export async function POST(req: NextRequest) {
 
         // إنشاء مسار فريد للملف
         const timestamp = Date.now();
-        const fileName = `${adId}/${assetType}/${timestamp}-${file.name}`;
+        // Sanitize filename
+        const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+        const fileName = `${adId}/${assetType}/${timestamp}-${safeName}`;
+
+        // Convert file to ArrayBuffer for Supabase
+        const fileBuffer = await file.arrayBuffer();
 
         // رفع الملف إلى Supabase Storage
         const { data, error: uploadError } = await supabase.storage
             .from("ad-assets")
-            .upload(fileName, file, {
+            .upload(fileName, fileBuffer, {
+                contentType: file.type,
                 cacheControl: "3600",
-                upsert: false,
+                upsert: true,
             });
 
         if (uploadError) {
+            console.error("[SUPABASE UPLOAD ERROR]", uploadError);
             return NextResponse.json(
                 { error: `Upload failed: ${uploadError.message}` },
                 { status: 500 }
@@ -73,6 +80,8 @@ export async function POST(req: NextRequest) {
         } = supabase.storage.from("ad-assets").getPublicUrl(fileName);
 
         // الحصول على معلومات الملف
+        // Note: Getting dimensions server-side requires buffer analysis (excessive here)
+        // We'll rely on client preview or default placeholders
         const dimensions = assetType === "image" ? { width: 1080, height: 1080 } : null;
         const duration =
             assetType === "video" ? Math.floor(Math.random() * 60) + 15 : null;
@@ -96,6 +105,7 @@ export async function POST(req: NextRequest) {
             .single();
 
         if (dbError) {
+            console.error("[DB INSERT ERROR]", dbError);
             return NextResponse.json(
                 { error: `Database error: ${dbError.message}` },
                 { status: 500 }

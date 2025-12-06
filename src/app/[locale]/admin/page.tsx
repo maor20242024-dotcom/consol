@@ -14,16 +14,18 @@ import { useRouter, usePathname } from "next/navigation";
 const FloatingDots = dynamic(() => import("@/components/FloatingDots").then(m => m.FloatingDots), { ssr: false });
 
 export default function AdminPage() {
-    const t = useTranslations("Dashboard");
+    const t = useTranslations("Admin");
     const router = useRouter();
     const pathname = usePathname();
     const locale = pathname.split('/')[1] || 'en';
     const [stats, setStats] = useState({ totalLeads: 0, totalUsers: 0, totalCampaigns: 0 });
     const [loading, setLoading] = useState(true);
-    const [systemHealth, setSystemHealth] = useState(98.5);
+    const [healthStatus, setHealthStatus] = useState<any[]>([]);
+    const [checkingHealth, setCheckingHealth] = useState(false);
 
     useEffect(() => {
         loadStats();
+        checkSystemHealth();
     }, []);
 
     const loadStats = async () => {
@@ -44,10 +46,29 @@ export default function AdminPage() {
         }
     };
 
+    const checkSystemHealth = async () => {
+        setCheckingHealth(true);
+        try {
+            const res = await fetch("/api/health");
+            const data = await res.json();
+            setHealthStatus(data.results || []);
+        } catch (error) {
+            console.error("Health check failed:", error);
+            setHealthStatus([]);
+        } finally {
+            setCheckingHealth(false);
+        }
+    };
+
     const handleLogout = async () => {
         await supabase.auth.signOut();
         router.push(`/${locale}/login`);
     };
+
+    // Safely calculate overall health
+    const safeHealthStatus = Array.isArray(healthStatus) ? healthStatus : [];
+    const overallHealth = safeHealthStatus.every(s => s.status === "operational") ? 100 :
+        safeHealthStatus.some(s => s.status === "down") ? 50 : 80;
 
     return (
         <div className="min-h-screen bg-background text-foreground relative overflow-hidden" dir={locale === "ar" ? "rtl" : "ltr"}>
@@ -67,13 +88,18 @@ export default function AdminPage() {
                                     <Crown className="w-6 h-6 text-primary-foreground" />
                                 </div>
                                 <div>
-                                    <h2 className="text-2xl font-bold text-gradient-gold">Admin Dashboard</h2>
-                                    <p className="text-xs text-muted-foreground">{locale === "ar" ? "قيصر الإمبراطورية" : "System Administrator"}</p>
+                                    <h2 className="text-2xl font-bold text-gradient-gold">{t("title")}</h2>
+                                    <p className="text-xs text-muted-foreground">{t("description")}</p>
                                 </div>
                             </div>
-                            <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
-                                ✓ {locale === "ar" ? "جميع الأنظمة نشطة" : "All Systems Active"}
-                            </Badge>
+                            <div className="flex gap-2">
+                                <Button variant="outline" size="sm" onClick={checkSystemHealth} disabled={checkingHealth}>
+                                    {checkingHealth ? "Checking..." : "Run Health Check"}
+                                </Button>
+                                <Badge className={`${overallHealth === 100 ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"} border-current`}>
+                                    {overallHealth === 100 ? `✓ ${t("active")}` : "⚠ Issues Detected"}
+                                </Badge>
+                            </div>
                         </div>
                     </header>
 
@@ -81,10 +107,10 @@ export default function AdminPage() {
                         {/* Statistics */}
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                             {[
-                                { label: "إجمالي العملاء", value: stats.totalLeads, color: "text-blue-400", icon: Users },
-                                { label: "المستخدمين", value: stats.totalUsers, color: "text-primary", icon: Users },
-                                { label: "الحملات", value: stats.totalCampaigns, color: "text-green-400", icon: TrendingUp },
-                                { label: "صحة النظام", value: `${systemHealth}%`, color: "text-yellow-400", icon: AlertCircle }
+                                { label: "CRM", value: stats.totalLeads, color: "text-blue-400", icon: Users },
+                                { label: t("users"), value: stats.totalUsers, color: "text-primary", icon: Users },
+                                { label: "Campaigns", value: stats.totalCampaigns, color: "text-green-400", icon: TrendingUp },
+                                { label: t("systemHealth"), value: `${overallHealth}%`, color: "text-yellow-400", icon: AlertCircle }
                             ].map((stat, i) => {
                                 const Icon = stat.icon;
                                 return (
@@ -104,26 +130,37 @@ export default function AdminPage() {
                         {/* Tabs */}
                         <Tabs defaultValue="overview" className="space-y-4">
                             <TabsList className="grid w-full grid-cols-4">
-                                <TabsTrigger value="overview">نظرة عامة</TabsTrigger>
-                                <TabsTrigger value="users">المستخدمين</TabsTrigger>
-                                <TabsTrigger value="campaigns">الحملات</TabsTrigger>
-                                <TabsTrigger value="settings">الإعدادات</TabsTrigger>
+                                <TabsTrigger value="overview">{t("systemHealth")}</TabsTrigger>
+                                <TabsTrigger value="users">{t("users")}</TabsTrigger>
+                                <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
+                                <TabsTrigger value="settings">{t("settings")}</TabsTrigger>
                             </TabsList>
 
                             <TabsContent value="overview">
                                 <Card className="glass border-border/50">
                                     <CardHeader>
-                                        <CardTitle>ملخص النظام</CardTitle>
+                                        <CardTitle>{t("systemHealth")}</CardTitle>
                                     </CardHeader>
                                     <CardContent className="space-y-4">
-                                        <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {safeHealthStatus.map((status, i) => (
+                                                <div key={i} className="p-4 bg-card/50 rounded-xl border border-border/50 flex items-center justify-between">
+                                                    <div>
+                                                        <p className="font-medium">{status.service}</p>
+                                                        {status.message && <p className="text-xs text-muted-foreground">{status.message}</p>}
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <Badge variant={status.status === "operational" ? "default" : "destructive"}>
+                                                            {status.status}
+                                                        </Badge>
+                                                        {status.latency && <p className="text-xs text-muted-foreground mt-1">{status.latency}ms</p>}
+                                                    </div>
+                                                </div>
+                                            ))}
+
                                             <div className="p-4 bg-card/50 rounded-xl border border-border/50">
-                                                <p className="text-muted-foreground text-sm mb-2">آخر تحديث</p>
-                                                <p className="text-2xl font-bold">{new Date().toLocaleString("ar-AE")}</p>
-                                            </div>
-                                            <div className="p-4 bg-card/50 rounded-xl border border-border/50">
-                                                <p className="text-muted-foreground text-sm mb-2">إصدار النظام</p>
-                                                <p className="text-2xl font-bold">v1.0.0</p>
+                                                <p className="text-muted-foreground text-sm mb-2">{t("logs")}</p>
+                                                <p className="text-2xl font-bold">{new Date().toLocaleString(locale === "ar" ? "ar-AE" : "en-US")}</p>
                                             </div>
                                         </div>
                                     </CardContent>
@@ -133,10 +170,21 @@ export default function AdminPage() {
                             <TabsContent value="users">
                                 <Card className="glass border-border/50">
                                     <CardHeader>
-                                        <CardTitle>إدارة المستخدمين</CardTitle>
+                                        <CardTitle>{t("users")}</CardTitle>
                                     </CardHeader>
                                     <CardContent>
-                                        <p className="text-muted-foreground">سيتم إضافة جدول المستخدمين قريباً...</p>
+                                        <div className="rounded-md border border-border/50">
+                                            <div className="grid grid-cols-5 p-4 bg-muted/50 font-medium text-sm">
+                                                <div>Name</div>
+                                                <div>Email</div>
+                                                <div>Role</div>
+                                                <div>Status</div>
+                                                <div>Actions</div>
+                                            </div>
+                                            <div className="p-8 text-center text-muted-foreground text-sm">
+                                                User management features coming soon...
+                                            </div>
+                                        </div>
                                     </CardContent>
                                 </Card>
                             </TabsContent>
@@ -144,10 +192,28 @@ export default function AdminPage() {
                             <TabsContent value="campaigns">
                                 <Card className="glass border-border/50">
                                     <CardHeader>
-                                        <CardTitle>إدارة الحملات</CardTitle>
+                                        <CardTitle>Campaigns Overview</CardTitle>
                                     </CardHeader>
                                     <CardContent>
-                                        <p className="text-muted-foreground">سيتم إضافة جدول الحملات قريباً...</p>
+                                        <div className="space-y-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-xl">
+                                                    <p className="text-sm text-green-500 mb-1">Active Campaigns</p>
+                                                    <p className="text-2xl font-bold">{stats.totalCampaigns}</p>
+                                                </div>
+                                                <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                                                    <p className="text-sm text-blue-500 mb-1">Total Spend</p>
+                                                    <p className="text-2xl font-bold">$0.00</p>
+                                                </div>
+                                                <div className="p-4 bg-purple-500/10 border border-purple-500/20 rounded-xl">
+                                                    <p className="text-sm text-purple-500 mb-1">Total Leads</p>
+                                                    <p className="text-2xl font-bold">{stats.totalLeads}</p>
+                                                </div>
+                                            </div>
+                                            <Button variant="outline" className="w-full" onClick={() => router.push(`/${locale}/campaigns`)}>
+                                                Go to Campaign Manager
+                                            </Button>
+                                        </div>
                                     </CardContent>
                                 </Card>
                             </TabsContent>
@@ -155,12 +221,43 @@ export default function AdminPage() {
                             <TabsContent value="settings">
                                 <Card className="glass border-border/50">
                                     <CardHeader>
-                                        <CardTitle>الإعدادات</CardTitle>
+                                        <CardTitle>{t("settings")}</CardTitle>
                                     </CardHeader>
-                                    <CardContent className="space-y-4">
-                                        <div className="p-4 bg-card/50 rounded-xl border border-border/50">
-                                            <p className="font-medium mb-2">الإعدادات العامة</p>
-                                            <p className="text-sm text-muted-foreground">سيتم إضافة خيارات الإعدادات قريباً...</p>
+                                    <CardContent className="space-y-6">
+                                        <div className="space-y-4">
+                                            <h3 className="text-lg font-medium">General Settings</h3>
+                                            <div className="grid gap-4">
+                                                <div className="flex items-center justify-between p-4 border border-border/50 rounded-xl">
+                                                    <div>
+                                                        <p className="font-medium">System Language</p>
+                                                        <p className="text-sm text-muted-foreground">Default language for new users</p>
+                                                    </div>
+                                                    <Badge variant="outline">English</Badge>
+                                                </div>
+                                                <div className="flex items-center justify-between p-4 border border-border/50 rounded-xl">
+                                                    <div>
+                                                        <p className="font-medium">Theme</p>
+                                                        <p className="text-sm text-muted-foreground">System appearance</p>
+                                                    </div>
+                                                    <Badge variant="outline">Dark / Gold</Badge>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <h3 className="text-lg font-medium">Integrations</h3>
+                                            <div className="grid gap-4">
+                                                <div className="flex items-center justify-between p-4 border border-border/50 rounded-xl">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">f</div>
+                                                        <div>
+                                                            <p className="font-medium">Facebook / Instagram</p>
+                                                            <p className="text-sm text-muted-foreground">Connected</p>
+                                                        </div>
+                                                    </div>
+                                                    <Badge className="bg-green-500/20 text-green-400">Active</Badge>
+                                                </div>
+                                            </div>
                                         </div>
                                     </CardContent>
                                 </Card>

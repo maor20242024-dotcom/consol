@@ -48,6 +48,9 @@ export default function AIAssistantPage() {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
+    const [aiMode, setAiMode] = useState<'general' | 'crm' | 'instagram'>('general');
+    const [streaming, setStreaming] = useState(false);
+
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!input.trim()) return;
@@ -62,32 +65,117 @@ export default function AIAssistantPage() {
         setMessages((prev) => [...prev, userMessage]);
         setInput("");
         setLoading(true);
+        setStreaming(true);
 
-        // Simulate AI response
-        setTimeout(() => {
-            const responses = [
+        try {
+            // Call AI API with streaming support
+            const response = await fetch('/api/ai-assistant/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: input,
+                    mode: aiMode,
+                    conversationHistory: messages.map(m => ({
+                        role: m.role,
+                        content: m.content
+                    }))
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to get AI response');
+            }
+
+            const reader = response.body?.getReader();
+            const decoder = new TextDecoder();
+            let assistantContent = '';
+
+            if (reader) {
+                const assistantMessage: Message = {
+                    id: (Date.now() + 1).toString(),
+                    role: "assistant",
+                    content: "",
+                    timestamp: new Date(),
+                };
+
+                setMessages((prev) => [...prev, assistantMessage]);
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = line.slice(6);
+                            if (data === '[DONE]') continue;
+                            
+                            try {
+                                const parsed = JSON.parse(data);
+                                if (parsed.content) {
+                                    assistantContent += parsed.content;
+                                    
+                                    setMessages((prev) => 
+                                        prev.map(m => 
+                                            m.id === assistantMessage.id 
+                                                ? { ...m, content: assistantContent }
+                                                : m
+                                        )
+                                    );
+                                }
+                            } catch (e) {
+                                // Skip invalid JSON
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Save conversation to database
+            await fetch('/api/ai-assistant/save-conversation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    messages: [...messages, userMessage, {
+                        role: "assistant",
+                        content: assistantContent,
+                        timestamp: new Date()
+                    }],
+                    mode: aiMode
+                }),
+            });
+
+        } catch (error) {
+            console.error('AI Error:', error);
+            
+            // Fallback response
+            const fallbackResponses = [
                 locale === "ar"
-                    ? "بناءً على البيانات الحالية، أتوقع نمو السوق بنسبة 15% في الربع القادم."
-                    : "Based on current data, I predict market growth of 15% in the next quarter.",
+                    ? "عذراً، حدث خطأ في الاتصال بالذكاء الاصطناعي. يرجى المحاولة مرة أخرى."
+                    : "Sorry, there was an error connecting to AI. Please try again.",
                 locale === "ar"
-                    ? "هذا العميل لديه احتمالية تحويل عالية. أوصيك بمتابعة فورية."
-                    : "This client has high conversion potential. I recommend immediate follow-up.",
-                locale === "ar"
-                    ? "الاستثمار في العقارات الفاخرة في منطقة الخليج يقدم عائداً متوسطاً بنسبة 18%."
-                    : "Investing in luxury properties in the Gulf region offers average returns of 18%.",
+                    ? "أنا أعمل على تحسين خدماتي. شكراً لصبرك."
+                    : "I'm working on improving my services. Thank you for your patience.",
             ];
-            const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-
-            const assistantMessage: Message = {
+            
+            const errorMessage: Message = {
                 id: (Date.now() + 1).toString(),
                 role: "assistant",
-                content: randomResponse,
+                content: fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)],
                 timestamp: new Date(),
             };
 
-            setMessages((prev) => [...prev, assistantMessage]);
+            setMessages((prev) => [...prev, errorMessage]);
+        } finally {
             setLoading(false);
-        }, 1500);
+            setStreaming(false);
+        }
     };
 
     const quickActions = [

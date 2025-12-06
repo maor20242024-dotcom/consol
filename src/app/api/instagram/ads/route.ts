@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db";
@@ -85,8 +85,8 @@ export async function POST(req: NextRequest) {
             typeof adType === "string" && adType.length > 0
                 ? adType
                 : hasVideo
-                ? "video"
-                : "image";
+                    ? "video"
+                    : "image";
 
         const ad = await prisma.instagramAd.create({
             data: {

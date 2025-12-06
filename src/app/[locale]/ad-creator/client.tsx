@@ -28,10 +28,10 @@ import {
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import {
-    generateHelineSuggestion,
+    generateHeadlineSuggestion,
     generateDescriptionSuggestion,
     simulateApiDelay,
-} from "@/lib/ai-suggestions";
+} from "@/lib/ai/ad-creator";
 
 const FloatingDots = dynamic(
     () => import("@/components/FloatingDots").then((m) => m.FloatingDots),
@@ -79,7 +79,7 @@ export function AdCreatorContent() {
                 if (response.ok) {
                     const data = await response.json();
                     setCampaigns(data.campaigns || []);
-                    
+
                     // If no campaign selected and campaigns exist, select the first one
                     if (!selectedCampaignId && data.campaigns?.length > 0) {
                         setSelectedCampaignId(data.campaigns[0].id);
@@ -104,13 +104,13 @@ export function AdCreatorContent() {
         setAiLoading("headline");
         try {
             await simulateApiDelay(800);
-            const suggestion = generateHelineSuggestion(
+            const suggestions = await generateHeadlineSuggestion(
                 adData.headline || "Your Product",
-                "20"
+                1
             );
             setAdData((prev) => ({
                 ...prev,
-                headline: suggestion,
+                headline: suggestions[0] || "",
             }));
             toast({
                 title: "AI Suggestion",
@@ -133,14 +133,14 @@ export function AdCreatorContent() {
         setAiLoading("description");
         try {
             await simulateApiDelay(800);
-            const suggestion = generateDescriptionSuggestion(
+            const suggestions = await generateDescriptionSuggestion(
                 adData.headline || "Your Product",
-                "Products",
-                "20"
+                undefined,
+                1
             );
             setAdData((prev) => ({
                 ...prev,
-                description: suggestion,
+                description: suggestions[0] || "",
             }));
             toast({
                 title: "AI Suggestion",
@@ -341,279 +341,279 @@ export function AdCreatorContent() {
                     variant="gradient"
                 >
                     <Card className="bg-slate-800/50 border-primary/20 backdrop-blur">
-                    <CardContent className="p-6">
-                        <Tabs value={activeTab} onValueChange={setActiveTab}>
-                            <TabsList className="bg-slate-700/50 mb-6">
-                                <TabsTrigger value="content" className="flex items-center">
-                                    <Type className="w-4 h-4 mr-2" />
-                                    {t("newCampaign")}
-                                </TabsTrigger>
-                                <TabsTrigger value="media" className="flex items-center">
-                                    <Upload className="w-4 h-4 mr-2" />
-                                    {t("upload")}
-                                </TabsTrigger>
-                                <TabsTrigger value="preview" className="flex items-center">
-                                    <Sparkles className="w-4 h-4 mr-2" />
-                                    {t("preview")}
-                                </TabsTrigger>
-                            </TabsList>
+                        <CardContent className="p-6">
+                            <Tabs value={activeTab} onValueChange={setActiveTab}>
+                                <TabsList className="bg-slate-700/50 mb-6">
+                                    <TabsTrigger value="content" className="flex items-center">
+                                        <Type className="w-4 h-4 mr-2" />
+                                        {t("newCampaign")}
+                                    </TabsTrigger>
+                                    <TabsTrigger value="media" className="flex items-center">
+                                        <Upload className="w-4 h-4 mr-2" />
+                                        {t("upload")}
+                                    </TabsTrigger>
+                                    <TabsTrigger value="preview" className="flex items-center">
+                                        <Sparkles className="w-4 h-4 mr-2" />
+                                        {t("preview")}
+                                    </TabsTrigger>
+                                </TabsList>
 
-                            <TabsContent value="content">
-                                <div className="space-y-4">
+                                <TabsContent value="content">
+                                    <div className="space-y-4">
 
-                                    <div>
-                                        <div className="flex items-center justify-between mb-2">
-                                            <label className="text-sm font-medium text-gray-300">
-                                                {t("campaignLabel")}
-                                            </label>
-                                            {loadingCampaigns && (
-                                                <span className="text-xs text-gray-400">
-                                                    Loading campaigns...
-                                                </span>
+                                        <div>
+                                            <div className="flex items-center justify-between mb-2">
+                                                <label className="text-sm font-medium text-gray-300">
+                                                    {t("campaignLabel")}
+                                                </label>
+                                                {loadingCampaigns && (
+                                                    <span className="text-xs text-gray-400">
+                                                        Loading campaigns...
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <Select
+                                                value={selectedCampaignId}
+                                                onValueChange={setSelectedCampaignId}
+                                                aria-label={t("campaignLabel")}
+                                            >
+                                                <SelectTrigger className="w-full bg-slate-700/50 border-slate-600 text-white">
+                                                    <SelectValue placeholder={t("selectCampaign") || "Select a campaign"} />
+                                                </SelectTrigger>
+                                                <SelectContent className="bg-slate-800 text-white">
+                                                    {loadingCampaigns ? (
+                                                        <SelectItem value="loading" disabled>
+                                                            Loading campaigns...
+                                                        </SelectItem>
+                                                    ) : campaigns.length === 0 ? (
+                                                        <SelectItem value="no-campaigns" disabled>
+                                                            {t("noCampaigns")}
+                                                        </SelectItem>
+                                                    ) : (
+                                                        campaigns.map((campaign) => (
+                                                            <SelectItem key={campaign.id} value={campaign.id}>
+                                                                {campaign.name}
+                                                            </SelectItem>
+                                                        ))
+                                                    )}
+                                                </SelectContent>
+                                            </Select>
+
+                                            {!loadingCampaigns && campaigns.length === 0 && (
+                                                <p className="text-xs text-gray-400 mt-1">
+                                                    {t("noCampaigns")}
+                                                </p>
                                             )}
                                         </div>
-                                        <Select
-                                            value={selectedCampaignId}
-                                            onValueChange={setSelectedCampaignId}
-                                            aria-label={t("campaignLabel")}
-                                        >
-                                            <SelectTrigger className="w-full bg-slate-700/50 border-slate-600 text-white">
-                                                <SelectValue placeholder={t("selectCampaign") || "Select a campaign"} />
-                                            </SelectTrigger>
-                                            <SelectContent className="bg-slate-800 text-white">
-                                                {loadingCampaigns ? (
-                                                    <SelectItem value="loading" disabled>
-                                                        Loading campaigns...
-                                                    </SelectItem>
-                                                ) : campaigns.length === 0 ? (
-                                                    <SelectItem value="no-campaigns" disabled>
-                                                        {t("noCampaigns")}
-                                                    </SelectItem>
-                                                ) : (
-                                                    campaigns.map((campaign) => (
-                                                        <SelectItem key={campaign.id} value={campaign.id}>
-                                                            {campaign.name}
-                                                        </SelectItem>
-                                                    ))
-                                                )}
-                                            </SelectContent>
-                                        </Select>
 
-                                        {!loadingCampaigns && campaigns.length === 0 && (
+                                        <div>
+                                            <div className="flex items-center justify-between mb-2">
+                                                <label className="text-sm font-medium text-gray-300">
+                                                    {t("headline")}
+                                                </label>
+                                                <Button
+                                                    onClick={handleAISuggestHeadline}
+                                                    disabled={aiLoading === "headline" || aiLoading === "description"}
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="border-primary/50 hover:bg-primary/10 h-8"
+                                                >
+                                                    {aiLoading === "headline" ? (
+                                                        <>
+                                                            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                                            Generating...
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Sparkles className="w-3 h-3 mr-1" />
+                                                            AI Suggestion
+                                                        </>
+                                                    )}
+                                                </Button>
+                                            </div>
+                                            <Input
+                                                placeholder="Enter headline (max 125 chars)"
+                                                value={adData.headline}
+                                                onChange={(e) =>
+                                                    setAdData({
+                                                        ...adData,
+                                                        headline: e.target.value.slice(0, 125),
+                                                    })
+                                                }
+                                                className="bg-slate-700/50 border-slate-600 text-white"
+                                            />
                                             <p className="text-xs text-gray-400 mt-1">
-                                                {t("noCampaigns")}
+                                                {adData.headline.length}/125
                                             </p>
+                                        </div>
+
+                                        <div>
+                                            <div className="flex items-center justify-between mb-2">
+                                                <label className="text-sm font-medium text-gray-300">
+                                                    {t("description")}
+                                                </label>
+                                                <Button
+                                                    onClick={handleAISuggestDescription}
+                                                    disabled={aiLoading === "description" || aiLoading === "headline"}
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="border-primary/50 hover:bg-primary/10 h-8"
+                                                >
+                                                    {aiLoading === "description" ? (
+                                                        <>
+                                                            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                                            Generating...
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Sparkles className="w-3 h-3 mr-1" />
+                                                            AI Suggestion
+                                                        </>
+                                                    )}
+                                                </Button>
+                                            </div>
+                                            <Textarea
+                                                placeholder="Enter description (max 300 chars)"
+                                                value={adData.description}
+                                                onChange={(e) =>
+                                                    setAdData({
+                                                        ...adData,
+                                                        description: e.target.value.slice(0, 300),
+                                                    })
+                                                }
+                                                className="bg-slate-700/50 border-slate-600 text-white min-h-32"
+                                            />
+                                            <p className="text-xs text-gray-400 mt-1">
+                                                {adData.description.length}/300
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <label className="text-sm font-medium text-gray-300 block mb-2">
+                                                {t("cta")}
+                                            </label>
+                                            <select
+                                                value={adData.callToAction}
+                                                onChange={(e) =>
+                                                    setAdData({
+                                                        ...adData,
+                                                        callToAction: e.target.value,
+                                                    })
+                                                }
+                                                className="w-full bg-slate-700/50 border border-slate-600 text-white rounded-md p-2"
+                                            >
+                                                <option value="SHOP_NOW">Shop Now</option>
+                                                <option value="LEARN_MORE">Learn More</option>
+                                                <option value="BOOK_NOW">Book Now</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </TabsContent>
+
+                                <TabsContent value="media">
+                                    <div className="space-y-4">
+                                        <div className="border-2 border-dashed border-primary/30 rounded-lg p-8 text-center hover:border-primary/50 transition cursor-pointer">
+                                            <input
+                                                type="file"
+                                                multiple
+                                                accept="image/*,video/*"
+                                                onChange={handleFileUpload}
+                                                className="hidden"
+                                                id="file-upload"
+                                            />
+                                            <label htmlFor="file-upload" className="cursor-pointer">
+                                                <Upload className="w-12 h-12 text-primary mx-auto mb-2" />
+                                                <p className="text-gray-400">
+                                                    {t("dragAndDrop")}
+                                                </p>
+                                            </label>
+                                        </div>
+
+                                        {uploadedAssets.length > 0 && (
+                                            <div className="space-y-2">
+                                                <h3 className="text-sm font-medium text-gray-300">
+                                                    {t("uploaded")}
+                                                </h3>
+                                                {uploadedAssets.map((asset, idx) => (
+                                                    <div
+                                                        key={idx}
+                                                        className="flex items-center justify-between bg-slate-700/30 p-3 rounded"
+                                                    >
+                                                        <div className="flex items-center">
+                                                            {asset.type === "video" ? (
+                                                                <Video className="w-4 h-4 text-primary mr-2" />
+                                                            ) : (
+                                                                <Upload className="w-4 h-4 text-primary mr-2" />
+                                                            )}
+                                                            <span className="text-sm text-gray-300">
+                                                                {asset.filename}
+                                                            </span>
+                                                        </div>
+                                                        <Badge variant="outline">
+                                                            {asset.type}
+                                                        </Badge>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         )}
                                     </div>
+                                </TabsContent>
 
-                                    <div>
-                                        <div className="flex items-center justify-between mb-2">
-                                            <label className="text-sm font-medium text-gray-300">
-                                                {t("headline")}
-                                            </label>
-                                            <Button
-                                                onClick={handleAISuggestHeadline}
-                                                disabled={aiLoading === "headline" || aiLoading === "description"}
-                                                size="sm"
-                                                variant="outline"
-                                                className="border-primary/50 hover:bg-primary/10 h-8"
-                                            >
-                                                {aiLoading === "headline" ? (
-                                                    <>
-                                                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                                                        Generating...
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Sparkles className="w-3 h-3 mr-1" />
-                                                        AI Suggestion
-                                                    </>
-                                                )}
-                                            </Button>
-                                        </div>
-                                        <Input
-                                            placeholder="Enter headline (max 125 chars)"
-                                            value={adData.headline}
-                                            onChange={(e) =>
-                                                setAdData({
-                                                    ...adData,
-                                                    headline: e.target.value.slice(0, 125),
-                                                })
-                                            }
-                                            className="bg-slate-700/50 border-slate-600 text-white"
-                                        />
-                                        <p className="text-xs text-gray-400 mt-1">
-                                            {adData.headline.length}/125
-                                        </p>
-                                    </div>
-
-                                    <div>
-                                        <div className="flex items-center justify-between mb-2">
-                                            <label className="text-sm font-medium text-gray-300">
-                                                {t("description")}
-                                            </label>
-                                            <Button
-                                                onClick={handleAISuggestDescription}
-                                                disabled={aiLoading === "description" || aiLoading === "headline"}
-                                                size="sm"
-                                                variant="outline"
-                                                className="border-primary/50 hover:bg-primary/10 h-8"
-                                            >
-                                                {aiLoading === "description" ? (
-                                                    <>
-                                                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                                                        Generating...
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Sparkles className="w-3 h-3 mr-1" />
-                                                        AI Suggestion
-                                                    </>
-                                                )}
-                                            </Button>
-                                        </div>
-                                        <Textarea
-                                            placeholder="Enter description (max 300 chars)"
-                                            value={adData.description}
-                                            onChange={(e) =>
-                                                setAdData({
-                                                    ...adData,
-                                                    description: e.target.value.slice(0, 300),
-                                                })
-                                            }
-                                            className="bg-slate-700/50 border-slate-600 text-white min-h-32"
-                                        />
-                                        <p className="text-xs text-gray-400 mt-1">
-                                            {adData.description.length}/300
-                                        </p>
-                                    </div>
-
-                                    <div>
-                                        <label className="text-sm font-medium text-gray-300 block mb-2">
-                                            {t("cta")}
-                                        </label>
-                                        <select
-                                            value={adData.callToAction}
-                                            onChange={(e) =>
-                                                setAdData({
-                                                    ...adData,
-                                                    callToAction: e.target.value,
-                                                })
-                                            }
-                                            className="w-full bg-slate-700/50 border border-slate-600 text-white rounded-md p-2"
-                                        >
-                                            <option value="SHOP_NOW">Shop Now</option>
-                                            <option value="LEARN_MORE">Learn More</option>
-                                            <option value="BOOK_NOW">Book Now</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </TabsContent>
-
-                            <TabsContent value="media">
-                                <div className="space-y-4">
-                                    <div className="border-2 border-dashed border-primary/30 rounded-lg p-8 text-center hover:border-primary/50 transition cursor-pointer">
-                                        <input
-                                            type="file"
-                                            multiple
-                                            accept="image/*,video/*"
-                                            onChange={handleFileUpload}
-                                            className="hidden"
-                                            id="file-upload"
-                                        />
-                                        <label htmlFor="file-upload" className="cursor-pointer">
-                                            <Upload className="w-12 h-12 text-primary mx-auto mb-2" />
-                                            <p className="text-gray-400">
-                                                {t("dragAndDrop")}
-                                            </p>
-                                        </label>
-                                    </div>
-
-                                    {uploadedAssets.length > 0 && (
-                                        <div className="space-y-2">
-                                            <h3 className="text-sm font-medium text-gray-300">
-                                                {t("uploaded")}
-                                            </h3>
-                                            {uploadedAssets.map((asset, idx) => (
-                                                <div
-                                                    key={idx}
-                                                    className="flex items-center justify-between bg-slate-700/30 p-3 rounded"
-                                                >
-                                                    <div className="flex items-center">
-                                                        {asset.type === "video" ? (
-                                                            <Video className="w-4 h-4 text-primary mr-2" />
-                                                        ) : (
-                                                            <Upload className="w-4 h-4 text-primary mr-2" />
-                                                        )}
-                                                        <span className="text-sm text-gray-300">
-                                                            {asset.filename}
+                                <TabsContent value="preview">
+                                    <div className="bg-linear-to-b from-slate-700/30 to-slate-900/30 rounded-lg p-6 border border-slate-700">
+                                        <div className="max-w-sm mx-auto">
+                                            <div className="bg-linear-to-b from-slate-600 to-slate-800 rounded-lg p-4 text-center">
+                                                {uploadedAssets.length > 0 ? (
+                                                    <div className="bg-slate-700 rounded h-48 flex items-center justify-center mb-4">
+                                                        <span className="text-gray-500">
+                                                            {t("mediaPreview")}
                                                         </span>
                                                     </div>
-                                                    <Badge variant="outline">
-                                                        {asset.type}
-                                                    </Badge>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </TabsContent>
+                                                ) : null}
 
-                            <TabsContent value="preview">
-                                <div className="bg-linear-to-b from-slate-700/30 to-slate-900/30 rounded-lg p-6 border border-slate-700">
-                                    <div className="max-w-sm mx-auto">
-                                        <div className="bg-linear-to-b from-slate-600 to-slate-800 rounded-lg p-4 text-center">
-                                            {uploadedAssets.length > 0 ? (
-                                                <div className="bg-slate-700 rounded h-48 flex items-center justify-center mb-4">
-                                                    <span className="text-gray-500">
-                                                        {t("mediaPreview")}
-                                                    </span>
-                                                </div>
-                                            ) : null}
-
-                                            <h2 className="text-lg font-bold text-white mb-2">
-                                                {adData.headline || "Your Headline Here"}
-                                            </h2>
-                                            <p className="text-sm text-gray-300 mb-4">
-                                                {adData.description || "Your description here"}
-                                            </p>
-                                            <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
-                                                {adData.callToAction.replace("_", " ")}
-                                            </Button>
+                                                <h2 className="text-lg font-bold text-white mb-2">
+                                                    {adData.headline || "Your Headline Here"}
+                                                </h2>
+                                                <p className="text-sm text-gray-300 mb-4">
+                                                    {adData.description || "Your description here"}
+                                                </p>
+                                                <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
+                                                    {adData.callToAction.replace("_", " ")}
+                                                </Button>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            </TabsContent>
-                        </Tabs>
+                                </TabsContent>
+                            </Tabs>
 
-                        <div className="flex justify-between mt-8">
-                            <Button
-                                onClick={() => setActiveTab("media")}
-                                variant="outline"
-                                disabled={activeTab === "content"}
-                                className="border-primary/20"
-                            >
-                                {t("previous")}
-                            </Button>
-                            {activeTab === "preview" ? (
+                            <div className="flex justify-between mt-8">
                                 <Button
-                                    onClick={handleCreateAd}
-                                    disabled={loading}
-                                    className="bg-linear-to-r from-primary to-primary/70 hover:from-primary/90 hover:to-primary/60 text-primary-foreground font-semibold"
+                                    onClick={() => setActiveTab("media")}
+                                    variant="outline"
+                                    disabled={activeTab === "content"}
+                                    className="border-primary/20"
                                 >
-                                    <Send className="w-4 h-4 mr-2" />
-                                    {loading ? t("creating") : t("create")}
+                                    {t("previous")}
                                 </Button>
-                            ) : (
-                                <Button
-                                    onClick={() => setActiveTab("preview")}
-                                    className="bg-linear-to-r from-primary to-primary/70 hover:from-primary/90 hover:to-primary/60 text-primary-foreground font-semibold"
-                                >
-                                    {t("preview")}
-                                </Button>
-                            )}
-                        </div>
-                    </CardContent>
+                                {activeTab === "preview" ? (
+                                    <Button
+                                        onClick={handleCreateAd}
+                                        disabled={loading}
+                                        className="bg-linear-to-r from-primary to-primary/70 hover:from-primary/90 hover:to-primary/60 text-primary-foreground font-semibold"
+                                    >
+                                        <Send className="w-4 h-4 mr-2" />
+                                        {loading ? t("creating") : t("create")}
+                                    </Button>
+                                ) : (
+                                    <Button
+                                        onClick={() => setActiveTab("preview")}
+                                        className="bg-linear-to-r from-primary to-primary/70 hover:from-primary/90 hover:to-primary/60 text-primary-foreground font-semibold"
+                                    >
+                                        {t("preview")}
+                                    </Button>
+                                )}
+                            </div>
+                        </CardContent>
                     </Card>
                 </PageShell>
             </div>

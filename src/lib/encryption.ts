@@ -1,9 +1,10 @@
 import crypto from 'crypto'
+import { env } from '@/lib/env';
 
 const algorithm = 'aes-256-cbc'
 const IV_LENGTH = 16
 
-const rawKey = process.env.ACCESS_TOKEN_ENCRYPTION_KEY || ''
+const rawKey = env.ACCESS_TOKEN_ENCRYPTION_KEY || ''
 const ENCRYPTION_KEY = Buffer.from(rawKey, 'utf8')
 
 function assertKeyLength() {

@@ -1,4 +1,5 @@
-import { NextRequest } from 'next/server'
+import { NextRequest } from 'next/server';
+import { env } from '@/lib/env';
 import { createAdminClient } from './supabase'
 
 const ACCESS_TOKEN_HEADER = 'authorization'

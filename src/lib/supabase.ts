@@ -1,8 +1,9 @@
-import { createBrowserClient, createServerClient } from '@supabase/ssr'
+import { createBrowserClient, createServerClient } from '@supabase/ssr';
+import { env } from '@/lib/env';
 
-export const supabaseUrl = requireEnv('NEXT_PUBLIC_SUPABASE_URL', process.env.NEXT_PUBLIC_SUPABASE_URL)
-export const supabaseAnonKey = requireEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+export const supabaseUrl = requireEnv('NEXT_PUBLIC_SUPABASE_URL', env.NEXT_PUBLIC_SUPABASE_URL);
+export const supabaseAnonKey = requireEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY; // unchanged as this is secret
 
 function requireEnv(name: string, value?: string) {
     if (!value) {
@@ -29,7 +30,7 @@ export function createAdminClient() {
             getAll() {
                 return []
             },
-            setAll() {},
+            setAll() { },
         },
     })
 }

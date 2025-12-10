@@ -8,7 +8,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -31,13 +31,45 @@ model User {
 
 model Lead {
   id     String  @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // بيانات أساسية
   name   String
+  phone  String
   email  String?
-  phone  String?
-  budget String?
-  status String  @default("new") // Kept for backward compatibility, but Stage should be used primarily
-  score  Int     @default(0)
+  message   String?
+  country   String?
+  language  String? // "ar" / "en"
+
+  // تفضيلات
+  isWhatsappPreferred Boolean @default(false)
+  budgetRange         String?
+  timeToInvest        String?
+  investmentGoal      String?
+  budget String? // Kept for backward compatibility
+
+  // التسويق / المصدر
+  marketingChannel String? // cnn_native, aljazeera_native, social_instagram...
+  pageSlug         String? // cnn-main-hero, aljazeera-sidebar-b...
   source String  @default("MANUAL") // Updated: MANUAL as default
+
+  // UTM
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  utmTerm     String?
+  utmContent  String?
+
+  // تتبّع تقني
+  landingPath String?
+  referer     String?
+  userAgent   String?
+  ipAddress   String?
+
+  // حالة الـ lead
+  status String @default("NEW")
+  score  Int     @default(0)
 
   // New CRM Fields
   pipelineId     String?
@@ -45,11 +77,8 @@ model Lead {
   priority       String   @default("MEDIUM") // LOW, MEDIUM, HIGH
   expectedValue  Decimal? @default(0)
   assignedTo     String? // Employee name/ID who is responsible for this lead
-  campaignId     String?  @db.Text // NEW: Link to Campaign table
+  campaignId     String?   // NEW: Link to Campaign table
   conversationId String? // NEW: Link to Conversation for unified inbox
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
   // Relations
   pipeline          Pipeline?          @relation(fields: [pipelineId], references: [id])
@@ -60,11 +89,25 @@ model Lead {
   instagramMessages InstagramMessage[]
   whatsappMessages  WhatsappMessage[]
 
+  // علاقة مع الأحداث
+  events LeadEvent[]
+
   @@index([pipelineId])
   @@index([stageId])
   @@index([assignedTo])
   @@index([campaignId]) // NEW: Index for campaign filtering
   @@index([conversationId])
+}
+
+model LeadEvent {
+  id        String        @id @default(cuid())
+  createdAt DateTime      @default(now())
+  type      String
+  description String?
+  meta      String?
+
+  leadId String
+  lead   Lead          @relation(fields: [leadId], references: [id], onDelete: Cascade)
 }
 
 model Pipeline {
@@ -101,10 +144,10 @@ model Activity {
   id           String    @id @default(cuid())
   leadId       String
   type         String // CALL, NOTE, EMAIL, MEETING, WHATSAPP, INSTAGRAM, REMINDER
-  content      String    @db.Text
+  content      String
   performedBy  String? // Employee name/ID
   scheduledFor DateTime? // For follow-up reminders
-  aiSummary    String?   @db.Text // AI-generated summary
+  aiSummary    String?    // AI-generated summary
   duration     Int? // Duration in minutes (for calls/meetings)
   isCompleted  Boolean   @default(true) // For scheduled activities
 
@@ -130,7 +173,7 @@ model Call {
   status        String // INITIATED, RINGING, ANSWERED, ENDED, FAILED
   duration      Int? // Duration in seconds
   recordingUrl  String? // URL to call recording
-  transcript    String?   @db.Text // Speech recognition transcript
+  transcript    String?    // Speech recognition transcript
   startedAt     DateTime?
   endedAt       DateTime?
   createdAt     DateTime  @default(now())
@@ -158,7 +201,7 @@ model Campaign {
   startDate  DateTime?
   endDate    DateTime?
   platform   String    @default("FACEBOOK") // FACEBOOK, INSTAGRAM, GOOGLE, TIKTOK
-  externalId String?   @unique @db.Text // ID from ad platform (e.g., Facebook Campaign ID)
+  externalId String?   @unique  // ID from ad platform (e.g., Facebook Campaign ID)
   userId     String // User ownership
 
   createdAt DateTime @default(now())
@@ -180,7 +223,7 @@ model AdSet {
   name       String
   status     String    @default("DRAFT")
   budget     Decimal?
-  targeting  Json? // JSON to store targeting details (age, location, interests)
+  targeting  String? // JSON to store targeting details (age, location, interests)
   startDate  DateTime?
   endDate    DateTime?
   externalId String?
@@ -275,8 +318,8 @@ model InstagramAccount {
 model InstagramPost {
   id                String    @id @default(cuid())
   accountId         String
-  caption           String?   @db.Text
-  mediaUrl          String    @db.Text // Public URL from Supabase Storage
+  caption           String?
+  mediaUrl          String     // Public URL from Supabase Storage
   mediaType         String    @default("IMAGE") // IMAGE, VIDEO, CAROUSEL
   status            String    @default("DRAFT") // DRAFT, SCHEDULED, PUBLISHED, FAILED
   scheduledFor      DateTime?
@@ -301,7 +344,7 @@ model InstagramCampaign {
   name           String
   description    String?
   budget         Decimal   @default(0)
-  targetAudience Json? // JSON object مع demographics, interests, etc
+  targetAudience String? // JSON object مع demographics, interests, etc
   status         String    @default("draft") // draft, scheduled, active, paused, completed
   startDate      DateTime?
   endDate        DateTime?
@@ -323,7 +366,7 @@ model InstagramAd {
   adAccountId  String?
   adType       String // image, carousel, video, collection
   headline     String
-  description  String  @db.Text
+  description  String
   callToAction String  @default("SHOP_NOW") // SHOP_NOW, LEARN_MORE, BOOK_NOW
   status       String  @default("draft") // draft, pending_review, active, paused, rejected, completed
 
@@ -357,7 +400,7 @@ model AdAsset {
   url        String // رابط الملف في Supabase Storage
   thumbnail  String?
   altText    String?
-  dimensions Json? // { width: number, height: number }
+  dimensions String? // { width: number, height: number }
   fileSize   Int?
   duration   Int? // بالثواني للفيديو
   uploadedAt DateTime @default(now())
@@ -373,7 +416,7 @@ model AdVariant {
   adId        String
   variantName String // Variant A, Variant B, etc
   headline    String?
-  description String? @db.Text
+  description String?
   imageId     String?
   status      String  @default("active") // active, inactive
 
@@ -461,13 +504,13 @@ model Message {
   externalId     String? // Platform message ID
   direction      String // "inbound" | "outbound"
   source         String // "instagram" | "whatsapp" | "email" | "sms"
-  text           String?      @db.Text
-  payload        Json? // For media, attachments, etc.
+  text           String?
+  payload        String? // For media, attachments, etc.
   isRead         Boolean      @default(false)
   aiGenerated    Boolean      @default(false)
 
   // Metadata
-  metadata Json? // Platform-specific data
+  metadata String? // Platform-specific data
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -487,7 +530,7 @@ model InstagramMessage {
   senderId          String? // Instagram User ID of sender
   recipientId       String? // Instagram User ID of recipient
   username          String? // Instagram username
-  message           String   @db.Text
+  message           String
   timestamp         DateTime // When message was sent
   messageId         String   @unique // Instagram message ID
   isFromUser        Boolean  @default(true) // true if from user, false if from business
@@ -495,8 +538,8 @@ model InstagramMessage {
   instagramAccountId String? // ✅ Link to InstagramAccount
 
   // Relations to existing CRM
-  leadId     String? @db.Text // Link to lead if converted
-  campaignId String? @db.Text // Link to campaign if from ad
+  leadId     String?  // Link to lead if converted
+  campaignId String?  // Link to campaign if from ad
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -541,7 +584,7 @@ model WhatsappMessage {
   senderId           String? // WhatsApp User ID of sender
   recipientId        String? // WhatsApp User ID of recipient
   phoneNumber        String // Phone number of sender/receiver
-  message            String    @db.Text
+  message            String
   timestamp          DateTime // When message was sent/received
   messageId          String    @unique // WhatsApp message ID
   isFromUser         Boolean   @default(true) // true if from customer, false if from business
@@ -549,8 +592,8 @@ model WhatsappMessage {
   whatsappAccountId  String?   // ✅ Link to WhatsappAccount
 
   // Relations to existing CRM
-  leadId     String? @db.Text // Link to lead if converted
-  campaignId String? @db.Text // Link to campaign if from campaign
+  leadId     String?  // Link to lead if converted
+  campaignId String?  // Link to campaign if from campaign
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -576,7 +619,7 @@ model AIAssistant {
   name         String
   description  String?
   role         String? // e.g. "inbox_auto_reply", "ads_brain", "crm_helper"
-  systemPrompt String   @db.Text
+  systemPrompt String
   isActive     Boolean  @default(true)
   userId       String? // User ownership
   createdAt    DateTime @default(now())
@@ -608,7 +651,7 @@ model AIConversationMessage {
   conversationId String
   conversation   AIConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   role           String // "user", "assistant", "system"
-  content        String         @db.Text
+  content        String
   timestamp      DateTime
   createdAt      DateTime       @default(now())
 
@@ -666,7 +709,7 @@ model AIAutoReplyRule {
   userId                   String   // ✅ Required for ownership
   name                     String
   keyword                  String?
-  response                 String?  @db.Text
+  response                 String?
   useAI                    Boolean  @default(false)
   assistantId              String?
   platform                 String   // "instagram" | "whatsapp" | "all"

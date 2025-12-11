@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
         const newLead = await prisma.lead.create({
             data: {
                 name: String(name),
-                phone: phone ? String(phone) : null,
+                phone: phone ? String(phone) : "Unknown",
                 email: email ? String(email) : null,
                 source: source ? String(source).toUpperCase() : "GOOGLE_SHEETS",
                 budget: budget ? String(budget) : null,

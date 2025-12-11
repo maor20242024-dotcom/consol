@@ -145,6 +145,7 @@
     "source": "المصدر",
     "selectSource": "اختر مصدر العميل",
     "createNewCampaign": "إنشاء حملة جديدة",
+    "campaign": "الحملة",
     "campaignName": "اسم الحملة",
     "selectCampaignOptional": "اختر حملة (اختياري)",
     "noCampaign": "لا توجد حملة",
@@ -240,7 +241,8 @@
     "bookNow": "احجز الآن",
     "signUp": "سجل الآن",
     "getStarted": "ابدأ الآن",
-    "contactUs": "تواصل معنا"
+    "contactUs": "تواصل معنا",
+    "createNewCampaign": "إنشاء حملة جديدة"
   },
   "Home": {
     "title": "بوابة الإمبراطورية",

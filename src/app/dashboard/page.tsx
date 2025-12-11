@@ -232,7 +232,7 @@ export default function DashboardPage() {
     }
   };
 
-  const toggleCampaignStatus = async (campaignName, currentStatus) => {
+  const toggleCampaignStatus = async (campaignName: string, currentStatus: string) => {
     try {
       const response = await fetch('/api/social-media', {
         method: 'POST',

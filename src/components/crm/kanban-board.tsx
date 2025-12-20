@@ -24,9 +24,10 @@ interface KanbanBoardProps {
     initialStages: Stage[];
     initialLeads: Lead[];
     onViewDetails?: (lead: Lead) => void;
+    viewMode?: 'CLASSIC' | 'COMPACT' | 'STACK';
 }
 
-export function KanbanBoard({ initialStages, initialLeads, onViewDetails }: KanbanBoardProps) {
+export function KanbanBoard({ initialStages, initialLeads, onViewDetails, viewMode = 'CLASSIC' }: KanbanBoardProps) {
     const [stages] = useState<Stage[]>(initialStages);
     const [leads, setLeads] = useState<Lead[]>(initialLeads);
     const [activeLead, setActiveLead] = useState<Lead | null>(null);
@@ -146,19 +147,28 @@ export function KanbanBoard({ initialStages, initialLeads, onViewDetails }: Kanb
             onDragOver={onDragOver}
             onDragEnd={onDragEnd}
         >
-            <div className="flex h-[calc(100vh-200px)] gap-4 overflow-x-auto pb-4">
+            <div className="flex h-[calc(100vh-250px)] gap-6 overflow-x-auto pb-8 snap-x snap-mandatory px-2">
                 {stages.map((stage) => (
-                    <KanbanColumn
-                        key={stage.id}
-                        stage={stage}
-                        leads={leadsByStage[stage.id] || []}
-                        onViewDetails={onViewDetails}
-                    />
+                    <div key={stage.id} className="snap-center">
+                        <KanbanColumn
+                            stage={stage}
+                            leads={leadsByStage[stage.id] || []}
+                            onViewDetails={onViewDetails}
+                            viewMode={viewMode}
+                        />
+                    </div>
                 ))}
             </div>
 
-            <DragOverlay>
-                {activeLead ? <KanbanCard lead={activeLead} /> : null}
+            <DragOverlay dropAnimation={{
+                duration: 250,
+                easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+            }}>
+                {activeLead ? (
+                    <div className="scale-105 rotate-3 transition-transform duration-200 shadow-2xl">
+                        <KanbanCard lead={activeLead} viewMode="CLASSIC" />
+                    </div>
+                ) : null}
             </DragOverlay>
         </DndContext>
     );

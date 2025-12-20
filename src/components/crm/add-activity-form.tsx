@@ -8,8 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createActivity } from "@/actions/activities";
 import { generateSummary } from "@/actions/ai";
+import { getEmployees } from "@/actions/crm";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Sparkles } from "lucide-react";
+import { useEffect } from "react";
 
 interface AddActivityFormProps {
     leadId: string;
@@ -20,6 +22,7 @@ export function AddActivityForm({ leadId, onSuccess }: AddActivityFormProps) {
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
     const [aiLoading, setAiLoading] = useState(false);
+    const [employees, setEmployees] = useState<any[]>([]);
     const [formData, setFormData] = useState({
         type: "NOTE",
         content: "",
@@ -28,6 +31,17 @@ export function AddActivityForm({ leadId, onSuccess }: AddActivityFormProps) {
         duration: "",
         aiSummary: "",
     });
+
+    useEffect(() => {
+        loadEmployees();
+    }, []);
+
+    const loadEmployees = async () => {
+        const result = await getEmployees();
+        if (result.success) {
+            setEmployees(result.employees || []);
+        }
+    }
 
     const handleGenerateSummary = async () => {
         if (!formData.content || formData.content.length < 10) {
@@ -136,12 +150,16 @@ export function AddActivityForm({ leadId, onSuccess }: AddActivityFormProps) {
 
                 <div className="space-y-2">
                     <Label htmlFor="performedBy">Performed By</Label>
-                    <Input
-                        id="performedBy"
-                        value={formData.performedBy}
-                        onChange={(e) => setFormData({ ...formData, performedBy: e.target.value })}
-                        placeholder="Employee name"
-                    />
+                    <Select value={formData.performedBy} onValueChange={(value) => setFormData({ ...formData, performedBy: value })}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select Employee" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {employees.map(emp => (
+                                <SelectItem key={emp.id} value={emp.id}>{emp.name || emp.email}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
             </div>
 

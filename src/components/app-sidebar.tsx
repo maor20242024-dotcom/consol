@@ -1,15 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter, usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BarChart3, Bot, Target, Phone, Database,
-  Globe, Sparkles, TrendingUp, Settings, LogOut, Menu, X,
+  Globe, Sparkles, TrendingUp, Settings, LogOut, Menu, X, User as UserIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabase";
+import { useStackApp } from "@stackframe/stack";
 import { ImperiumLogo } from "@/components/ImperiumLogo";
 
 export function AppSidebar() {
@@ -17,12 +17,49 @@ export function AppSidebar() {
   const t = useTranslations();
   const router = useRouter();
   const pathname = usePathname();
+  const stackApp = useStackApp();
+  const [user, setUser] = useState<{ email: string; role: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+
   const locale = pathname.split('/')[1] || 'en';
   const isRtl = locale === 'ar';
 
+  useEffect(() => {
+    async function fetchUser() {
+      try {
+        const res = await fetch('/api/users/me');
+        if (!res.ok) {
+          // If 401, we might want to force a redirect just in case middleware missed it
+          if (res.status === 401 && !pathname.includes('/login')) {
+            window.location.href = `/${locale}/login`;
+          }
+          throw new Error("Unauthorized");
+        }
+        const data = await res.json();
+        if (data.success) {
+          setUser({ email: data.user.email, role: data.user.role });
+        }
+      } catch (err) {
+        console.warn("User status: Unauthenticated");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchUser();
+  }, [pathname, locale]);
+
+  if (pathname.includes(`/${locale}/login`) || pathname.includes(`/${locale}/landing`)) {
+    return null;
+  }
+
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push(`/${locale}/login`);
+    try {
+      await stackApp.signOut();
+      // Use window.location for a hard refresh and cookie cleanup
+      window.location.href = `/${locale}/login`;
+    } catch (err) {
+      window.location.href = `/${locale}/login`;
+    }
   };
 
   const navigateTo = (path: string) => {
@@ -37,10 +74,15 @@ export function AppSidebar() {
     { icon: Database, labelKey: "admin", path: 'admin' },
     { icon: Globe, labelKey: "campaigns", path: 'campaigns-manager' },
     { icon: Sparkles, labelKey: "adCreator", path: 'ad-creator' },
-    { icon: Bot, labelKey: "instagram", path: 'instagram/content-manager' }, // Reusing Bot icon for now or similar
+    { icon: Bot, labelKey: "instagram", path: 'instagram/content-manager' },
     { icon: TrendingUp, labelKey: "analytics", path: 'analytics' },
     { icon: Settings, labelKey: "settings", path: 'settings' },
-  ];
+  ].filter(item => {
+    if (item.path === 'admin' || item.path === 'analytics') {
+      return user?.role === 'admin' || user?.role === 'superadmin';
+    }
+    return true;
+  });
 
   const isActive = (path: string) => {
     if (path === 'dashboard') {
@@ -49,7 +91,6 @@ export function AppSidebar() {
     return pathname.includes(`/${locale}/${path}`);
   };
 
-  // Animation variants based on direction
   const sidebarVariants = {
     open: { x: 0 },
     closed: { x: isRtl ? 320 : -320 },
@@ -57,7 +98,6 @@ export function AppSidebar() {
 
   return (
     <>
-      {/* Mobile Toggle */}
       <Button
         variant="ghost"
         size="icon"
@@ -67,7 +107,6 @@ export function AppSidebar() {
         {sidebarOpen ? <X /> : <Menu />}
       </Button>
 
-      {/* Sidebar */}
       <motion.aside
         initial={sidebarOpen ? "open" : "closed"}
         animate={sidebarOpen ? "open" : "closed"}
@@ -75,19 +114,29 @@ export function AppSidebar() {
         transition={{ duration: 0.3, ease: "easeInOut" }}
         className="flex flex-col w-80 bg-card/80 backdrop-blur-xl border-e border-border/50 shadow-2xl p-6 overflow-y-auto h-screen fixed ltr:left-0 rtl:right-0 top-0 z-40 lg:relative lg:z-auto"
       >
-        {/* Logo */}
         <div className="flex items-center gap-4 mb-8 px-2">
           <ImperiumLogo />
         </div>
 
-        {/* Language Switcher */}
+        {!loading && user && (
+          <div className="mb-6 p-4 rounded-xl bg-primary/5 border border-primary/10">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-primary/20">
+                <UserIcon className="w-4 h-4 text-primary" />
+              </div>
+              <div className="overflow-hidden">
+                <p className="text-xs font-bold text-primary uppercase tracking-wider">{user.role}</p>
+                <p className="text-sm text-foreground truncate font-medium">{user.email}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="flex gap-2 mb-8 p-1.5 bg-card/50 rounded-xl border border-border/30">
           <button
             onClick={() => {
-              if (locale !== 'en') {
-                const newPath = pathname.replace(/^\/[a-z]{2}/, '/en');
-                router.push(newPath);
-              }
+              const newPath = pathname.replace(/^\/[a-z]{2}/, '/en');
+              router.push(newPath || '/en/dashboard');
             }}
             className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all ${locale === 'en'
               ? 'bg-primary text-primary-foreground shadow-lg'
@@ -98,10 +147,8 @@ export function AppSidebar() {
           </button>
           <button
             onClick={() => {
-              if (locale !== 'ar') {
-                const newPath = pathname.replace(/^\/[a-z]{2}/, '/ar');
-                router.push(newPath);
-              }
+              const newPath = pathname.replace(/^\/[a-z]{2}/, '/ar');
+              router.push(newPath || '/ar/dashboard');
             }}
             className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all ${locale === 'ar'
               ? 'bg-primary text-primary-foreground shadow-lg'
@@ -112,8 +159,7 @@ export function AppSidebar() {
           </button>
         </div>
 
-        {/* Navigation Menu */}
-        <nav className="space-y-1.5 mb-12 flex-1">
+        <nav className="space-y-1.5 mb-12 flex-1 scrollbar-none">
           {menuItems.map((item, i) => {
             const Icon = item.icon;
             const active = isActive(item.path);
@@ -135,11 +181,10 @@ export function AppSidebar() {
           })}
         </nav>
 
-        {/* Logout Button */}
         <div className="mt-auto pt-6 border-t border-border/20">
           <Button
             variant="outline"
-            className="w-full glass justify-start gap-3 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-all"
+            className="w-full glass justify-start gap-3 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-all font-semibold"
             onClick={handleLogout}
           >
             <LogOut className="w-4 h-4" />
@@ -148,7 +193,6 @@ export function AppSidebar() {
         </div>
       </motion.aside>
 
-      {/* Overlay for mobile */}
       <AnimatePresence>
         {sidebarOpen && (
           <motion.div

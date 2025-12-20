@@ -38,6 +38,13 @@ next-env.d.ts
 
 # logs
 *.log
+dev.log
+dev_check.log
+server.log
+
+# temporary files
+app.txt
+gitignore.txt
 
 # prisma
 prisma/db/

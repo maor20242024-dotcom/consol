@@ -4,6 +4,11 @@
 
 import { metaWebhook } from '@/lib/logger';
 
+// Soft-fail check
+if (!process.env.META_APP_ID || !process.env.META_APP_SECRET) {
+  console.warn('[Instagram] Meta App ID/Secret missing. Integration may not work.');
+}
+
 export interface InstagramMessageEvent {
   sender: {
     id: string;
@@ -96,7 +101,7 @@ export function extractInstagramMessages(payload: any): InstagramMessageEvent[] 
     }
 
     const messages: InstagramMessageEvent[] = [];
-    
+
     for (const entry of payload.entry || []) {
       if (entry.messaging && Array.isArray(entry.messaging)) {
         for (const messagingEvent of entry.messaging) {

@@ -1,4 +1,5 @@
 import { generateText } from "./provider";
+import { crmService } from "@/lib/integrations/crm";
 
 export async function generateAdCopy(topic: string, tone: string = "Professional", platform: string = "Instagram"): Promise<{
     headline: string;
@@ -6,10 +7,23 @@ export async function generateAdCopy(topic: string, tone: string = "Professional
     hashtags: string[];
 }> {
     try {
+        // Enriched context from CRM (Placeholder)
+        let additionalContext = "";
+        if (crmService.isConfigured) {
+            try {
+                // Placeholder for actual CRM data fetching
+                // const projects = await crmService.getProjects();
+                // additionalContext = \`\nCRM Context: Integrated with Imperium CRM.\`;
+            } catch (e) {
+                console.warn("Failed to fetch CRM context", e);
+            }
+        }
+
         const prompt = `
       You are an expert copywriter for luxury real estate ads on ${platform}.
       Create a high-converting ad for the following topic: "${topic}".
       Tone: ${tone}.
+      ${additionalContext}
       
       Return as result strictly as a JSON object with the following keys:
       - "headline": A catchy headline (max 50 chars).

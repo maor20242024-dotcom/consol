@@ -1,103 +1,73 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { prisma } from "@/lib/db";
+import { requireAuth } from "@/lib/api-auth";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-// GET: الحصول على تحليلات الحملة
-export async function GET(
-    req: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     try {
-        const { id } = await params; // campaignId
-        const dateRange = req.nextUrl.searchParams.get("days") || "30";
-        const days = parseInt(dateRange);
+        const user = await requireAuth(req);
+        if (!user || !user.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-        // جلب جميع الإعلانات في الحملة
-        const { data: ads, error: adsError } = await supabase
-            .from("InstagramAd")
-            .select("id")
-            .eq("campaignId", id);
+        const { id } = params;
 
-        if (adsError) {
-            return NextResponse.json({ error: adsError.message }, { status: 500 });
-        }
+        // Verify Campaign Ownership
+        const campaign = await prisma.instagramCampaign.findUnique({
+            where: { id },
+            include: { account: true, ads: true }
+        });
 
-        const adIds = ads?.map((ad) => ad.id) || [];
+        if (!campaign) return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
+        if (campaign.account?.userId !== user.id && user.role !== 'admin') return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-        if (adIds.length === 0) {
-            return NextResponse.json({
-                success: true,
-                campaign_id: id,
-                totalImpressions: 0,
-                totalClicks: 0,
-                totalConversions: 0,
-                totalSpend: 0,
-                avgCTR: 0,
-                avgCPC: 0,
-                ads: [],
-                performance: [],
+        // Fetch Performance Data (Mock logic or real if table populated)
+        // Aggregating ad performance
+        const ads = await prisma.instagramAd.findMany({
+            where: { campaignId: id },
+            include: {
+                performance: {
+                    orderBy: { date: 'desc' },
+                    take: 30
+                }
+            }
+        });
+
+        // Calculate totals
+        let totalImpressions = 0;
+        let totalClicks = 0;
+        let totalSpend = 0;
+        let totalConversions = 0;
+
+        ads.forEach(ad => {
+            ad.performance.forEach(p => {
+                totalImpressions += p.impressions;
+                totalClicks += p.clicks;
+                totalSpend += Number(p.spend);
+                totalConversions += p.conversions;
             });
-        }
-
-        // جلب بيانات الأداء الإجمالية
-        const { data: performance } = await supabase
-            .from("AdPerformance")
-            .select("*")
-            .in("adId", adIds)
-            .gte("date", new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString())
-            .order("date", { ascending: true });
-
-        // جلب تفاصيل الإعلانات
-        const { data: adDetails } = await supabase
-            .from("InstagramAd")
-            .select("*")
-            .eq("campaignId", id);
-
-        // حساب الإجماليات
-        const totals = {
-            impressions: adDetails?.reduce((sum, ad) => sum + ad.impressions, 0) || 0,
-            clicks: adDetails?.reduce((sum, ad) => sum + ad.clicks, 0) || 0,
-            conversions:
-                adDetails?.reduce((sum, ad) => sum + ad.conversions, 0) || 0,
-            spend: adDetails?.reduce((sum, ad) => sum + parseFloat(ad.spend), 0) || 0,
-        };
-
-        const avgCTR =
-            totals.impressions > 0
-                ? ((totals.clicks / totals.impressions) * 100).toFixed(2)
-                : "0";
-        const avgCPC =
-            totals.clicks > 0 ? (totals.spend / totals.clicks).toFixed(2) : "0";
+        });
 
         return NextResponse.json({
             success: true,
-            campaign_id: id,
-            totalImpressions: totals.impressions,
-            totalClicks: totals.clicks,
-            totalConversions: totals.conversions,
-            totalSpend: totals.spend.toFixed(2),
-            avgCTR: parseFloat(avgCTR),
-            avgCPC: parseFloat(avgCPC),
-            adsCount: adDetails?.length || 0,
-            ads: adDetails || [],
-            performance: performance || [],
-            dateRange: {
-                days,
-                from: new Date(
-                    Date.now() - days * 24 * 60 * 60 * 1000
-                ).toISOString(),
-                to: new Date().toISOString(),
-            },
+            analytics: {
+                summary: {
+                    impressions: totalImpressions,
+                    clicks: totalClicks,
+                    spend: totalSpend,
+                    conversions: totalConversions
+                },
+                ads: ads.map(ad => ({
+                    id: ad.id,
+                    headline: ad.headline,
+                    status: ad.status,
+                    impressions: ad.impressions, // Assuming these fields are updated on Ad model too or just recalc
+                    clicks: ad.clicks,
+                    spend: Number(ad.spend)
+                }))
+            }
         });
-    } catch (error: any) {
-        console.error("[ANALYTICS_CAMPAIGN_GET_ERROR]", error);
-        return NextResponse.json(
-            { error: "Failed to fetch campaign analytics" },
-            { status: 500 }
-        );
+
+    } catch (error) {
+        console.error("Error fetching campaign analytics:", error);
+        return NextResponse.json({ error: "Internal Error" }, { status: 500 });
     }
 }

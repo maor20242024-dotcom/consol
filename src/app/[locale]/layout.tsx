@@ -1,3 +1,4 @@
+import "../globals.css";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -5,6 +6,8 @@ import { routing } from "@/i18n/routing";
 import { Inter } from "next/font/google";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Toaster } from "@/components/ui/toaster";
+import { StackProvider, StackTheme } from "@stackframe/stack";
+import { stackServerApp } from "@/lib/stack";
 
 const inter = Inter({
     subsets: ["latin"],
@@ -31,6 +34,12 @@ export default async function LocaleLayout({
 
     setRequestLocale(locale);
     const messages = await getMessages();
+    const user = await stackServerApp.getUser();
+
+    // Check if we are on a public page (login or landing)
+    // We can't use usePathname here (server component), so we rely on metadata/usage patterns
+    // Actually, in Next.js 15+, we rely on middleware for redirection, but we can add a safety check
+    // However, if we redirect here, we must be careful not to create a loop for the login page itself.
 
     return (
         <html lang={locale} dir={locale === "ar" ? "rtl" : "ltr"} suppressHydrationWarning>
@@ -40,19 +49,23 @@ export default async function LocaleLayout({
                 <link rel="manifest" href="/site.webmanifest" />
             </head>
             <body className={`${inter.variable} font-sans antialiased bg-background text-foreground min-h-screen`}>
-                <NextIntlClientProvider locale={locale} messages={messages}>
-                    <div className="flex h-screen overflow-hidden">
-                        {/* Sidebar (Start) */}
-                        <AppSidebar />
+                <StackProvider app={stackServerApp}>
+                    <StackTheme>
+                        <NextIntlClientProvider locale={locale} messages={messages}>
+                            <div className="flex h-screen overflow-hidden">
+                                {/* Sidebar (Start) */}
+                                <AppSidebar />
 
-                        {/* Main Content Area */}
-                        <main className="flex-1 overflow-auto relative">
-                            {children}
-                        </main>
+                                {/* Main Content Area */}
+                                <main className="flex-1 overflow-auto relative">
+                                    {children}
+                                </main>
 
-                        <Toaster />
-                    </div>
-                </NextIntlClientProvider>
+                                <Toaster />
+                            </div>
+                        </NextIntlClientProvider>
+                    </StackTheme>
+                </StackProvider>
             </body>
         </html>
     );

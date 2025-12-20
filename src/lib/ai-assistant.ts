@@ -1,5 +1,3 @@
-import { OpenAI } from "openai";
-
 export interface ChatMessage {
     role: 'user' | 'assistant' | 'system';
     content: string;
@@ -10,16 +8,19 @@ const PROVIDERS = {
     openrouter: {
         name: 'OpenRouter',
         url: 'https://openrouter.ai/api/v1/chat/completions',
-        model: 'anthropic/claude-3-haiku',
+        // ✅ Using a FREE powerful model from OpenRouter as requested by Alpha
+        model: process.env.OPENROUTER_MODEL || 'google/gemini-2.0-flash-exp:free',
         headers: {
             'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
             'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://imperiumgate.com', // Optional but good for OpenRouter
+            'X-Title': 'Imperium Console'
         }
     },
     zai: {
         name: 'ZAI',
         url: process.env.ZAI_API_URL || 'https://api.zai.ai/v1/chat/completions',
-        model: 'zai-gpt-4',
+        model: process.env.ZAI_MODEL || 'zai-gpt-4',
         headers: {
             'Authorization': `Bearer ${process.env.ZAI_API_KEY}`,
             'Content-Type': 'application/json',
@@ -27,8 +28,8 @@ const PROVIDERS = {
     },
     gemini: {
         name: 'Gemini',
-        url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:streamGenerateContent?key=${process.env.GEMINI_API_KEY}`,
-        model: 'gemini-pro',
+        url: `https://generativelanguage.googleapis.com/v1beta/models/${process.env.GEMINI_MODEL || 'gemini-pro'}:streamGenerateContent?key=${process.env.GEMINI_API_KEY}`,
+        model: process.env.GEMINI_MODEL || 'gemini-pro',
         headers: {
             'Content-Type': 'application/json',
         }
@@ -92,7 +93,8 @@ export async function* generateStreamWithProvider(
         });
 
         if (!response.ok) {
-            throw new Error(`${providerConfig.name} API error: ${response.status}`);
+            const errorText = await response.text();
+            throw new Error(`${providerConfig.name} API error (${response.status}): ${errorText}`);
         }
 
         const reader = response.body?.getReader();
@@ -122,7 +124,9 @@ export async function* generateStreamWithProvider(
                     // OpenAI streaming format
                     if (line.startsWith('data: ') && line !== 'data: [DONE]') {
                         try {
-                            const data = JSON.parse(line.slice(6));
+                            const trimmedLine = line.slice(6).trim();
+                            if (!trimmedLine) continue;
+                            const data = JSON.parse(trimmedLine);
                             const content = data.choices?.[0]?.delta?.content;
                             if (content) {
                                 yield `data: ${JSON.stringify({ content })}\n\n`;
@@ -145,28 +149,23 @@ export async function* tryProvidersSequentially(
     messages: ChatMessage[],
     locale: string
 ): AsyncGenerator<string, void, unknown> {
-    const providers: (keyof typeof PROVIDERS)[] = ['openrouter', 'zai', 'gemini'];
+    // Priority: OpenRouter (requested) -> Gemini -> ZAI
+    const providers: (keyof typeof PROVIDERS)[] = ['openrouter', 'gemini', 'zai'];
 
     for (const provider of providers) {
         try {
-            console.log(`Trying ${PROVIDERS[provider].name}...`);
+            console.log(`[ZETA AI] Trying ${PROVIDERS[provider].name} Provider...`);
             yield* generateStreamWithProvider(provider, messages);
-            return; // Success, exit the loop
+            return;
         } catch (error) {
-            console.error(`${PROVIDERS[provider].name} failed:`, error);
+            console.error(`[ZETA AI] ${PROVIDERS[provider].name} failed:`, error);
             if (provider === providers[providers.length - 1]) {
-                // Last provider failed, throw error
                 throw error;
             }
-            // Continue to next provider
         }
     }
 }
 
-/**
- * Generate a full response string (non-streaming)
- * Useful for webhooks/background processes
- */
 export async function generateAIResponse(
     messages: ChatMessage[],
     mode: 'general' | 'crm' | 'instagram' = 'general',
@@ -176,7 +175,6 @@ export async function generateAIResponse(
     const generator = tryProvidersSequentially(messages, locale);
 
     for await (const chunk of generator) {
-        // Parse the chunk data format: data: {"content":"..."}
         if (chunk.startsWith('data: ')) {
             try {
                 const jsonStr = chunk.replace('data: ', '').trim();
@@ -184,7 +182,7 @@ export async function generateAIResponse(
                 if (data.content) {
                     fullResponse += data.content;
                 }
-            } catch (e) {/* ignore parsing errors for chunks */ }
+            } catch (e) { }
         }
     }
 

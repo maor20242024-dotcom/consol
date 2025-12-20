@@ -1,50 +1,27 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase';
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
+import { requireAuth } from "@/lib/api-auth";
 
-// GET: Fetch Instagram messages
-export async function GET(request: NextRequest) {
+// GET: List messages
+export async function GET(req: NextRequest) {
   try {
-    const supabase = createAdminClient();
-    
-    const { data: messages, error } = await supabase
-      .from('InstagramMessage')
-      .select(`
-        *,
-        lead: Lead(
-          id,
-          name,
-          email,
-          phone,
-          status,
-          priority
-        ),
-        campaign: Campaign(
-          id,
-          name,
-          status
-        )
-      `)
-      .order('timestamp', { ascending: false })
-      .limit(50);
+    const user = await requireAuth(req);
+    if (!user || !user.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    if (error) {
-      console.error('Error fetching Instagram messages:', error);
-      return NextResponse.json(
-        { success: false, error: 'Failed to fetch messages' },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      messages: messages || []
+    const messages = await prisma.instagramMessage.findMany({
+      where: {
+        // Only fetch messages for accounts owned by user
+        instagramAccount: {
+          userId: user.id
+        }
+      },
+      orderBy: { timestamp: 'desc' },
+      take: 50
     });
 
-  } catch (error) {
-    console.error('Instagram messages API error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: true, messages: messages || [] });
+  } catch (error: any) {
+    console.error("Error fetching instagram messages:", error);
+    return NextResponse.json({ error: "Internal Error" }, { status: 500 });
   }
 }

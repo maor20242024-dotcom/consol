@@ -1,252 +1,145 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase";
+import { prisma as db } from "@/lib/db";
+import { DEFAULT_LEAD_SOURCE, isValidLeadSource } from "@/lib/lead-sources";
+// We need to import requireAuth. If it is not found, we might need to verify its path. 
+// Based on file list, src/lib/api-auth.ts exists.
 import { requireAuth } from "@/lib/api-auth";
-import { LEAD_SOURCES, DEFAULT_LEAD_SOURCE, isValidLeadSource } from "@/lib/lead-sources";
 
-/**
- * Smart Lead Scoring Algorithm
- * Replaces random scoring (70-99) with intelligent evaluation
- */
-function calculateLeadScore(leadData: {
-  name: string;
-  email?: string;
-  phone?: string;
-  budget?: string;
-  source?: string;
-}): number {
-  let score = 0;
-
-  // Budget scoring (30 points max)
-  if (leadData.budget) {
-    const budget = parseFloat(leadData.budget.replace(/[^0-9.]/g, ''));
-    if (budget > 2000000) score += 30;
-    else if (budget > 1000000) score += 20;
-    else if (budget > 500000) score += 10;
-    else if (budget > 100000) score += 5;
-  }
-
-  // Source scoring (25 points max) - Updated with new sources
-  const sourceScores: Record<string, number> = {
-    [LEAD_SOURCES.INSTAGRAM_AD]: 25,
-    [LEAD_SOURCES.REFERRAL]: 20,
-    [LEAD_SOURCES.WEBSITE_FORM]: 18,
-    [LEAD_SOURCES.INSTAGRAM_DM]: 15,
-    [LEAD_SOURCES.WHATSAPP]: 15,
-    [LEAD_SOURCES.WEBSITE_ADS]: 12,
-    [LEAD_SOURCES.PHONE_CALL]: 10,
-    [LEAD_SOURCES.MANUAL]: 8
-  };
-  score += sourceScores[leadData.source || ''] || 5;
-
-  // Data completeness (20 points max)
-  if (leadData.email && leadData.phone) score += 20;
-  else if (leadData.email || leadData.phone) score += 10;
-
-  // Name quality (15 points max) - checking if it's a real name
-  if (leadData.name && leadData.name.length > 3 && leadData.name.includes(' ')) {
-    score += 15;
-  } else if (leadData.name && leadData.name.length > 2) {
-    score += 8;
-  }
-
-  // Email domain quality (10 points max)
-  if (leadData.email) {
-    const domain = leadData.email.split('@')[1]?.toLowerCase();
-    const businessDomains = ['gmail.com', 'outlook.com', 'yahoo.com'];
-    if (!businessDomains.includes(domain || '')) {
-      score += 10; // Business email
-    } else {
-      score += 5; // Personal email
-    }
-  }
-
-  return Math.min(score, 100);
-}
+export const runtime = "nodejs"; // Force Node.js runtime for Prisma
 
 export async function POST(req: NextRequest) {
   try {
-    // 🔒 SECURITY: Require authentication
-    let auth;
-    try {
-      auth = await requireAuth(req);
-    } catch (authError) {
-      console.error('[LEADS API] Authentication failed:', authError);
-      return NextResponse.json({ 
-        error: 'Unauthorized access' 
-      }, { status: 401 });
+    let authType: 'API_KEY' | 'SESSION' = 'SESSION';
+    let authenticatedUserId: string | null = null;
+    let authUserRole: string | null = null;
+
+    // 1. CHECK API KEY (Bearer or Header)
+    const apiKeyHeader = req.headers.get("x-api-key");
+    const authHeader = req.headers.get("authorization");
+    const allowedKey = process.env.IMPERIUM_CRM_API_KEY || process.env.CRM_API_KEY;
+
+    let providedKey = apiKeyHeader;
+    if (!providedKey && authHeader?.startsWith("Bearer ")) {
+      providedKey = authHeader.split(" ")[1];
     }
 
-    const { name, phone, email, budget, source, campaignId } = await req.json();
+    if (providedKey && allowedKey && providedKey === allowedKey) {
+      authType = 'API_KEY';
+    } else {
+      // 2. CHECK SESSION (Fallback)
+      try {
+        const auth = await requireAuth(req);
+        authenticatedUserId = auth.userId || null;
+        authUserRole = auth.role || 'user';
+        authType = 'SESSION';
+      } catch (e) {
+        // If both fail, return 401
+        console.error('[LEADS API] Unauthorized access attempt (No Key, No Session)');
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    }
 
+    // ... Parsing body ...
+    const body = await req.json();
+    const { name, phone, email, budget, source, campaignId } = body;
+
+    // Basic Validation
     if (!name || !phone) {
-      return NextResponse.json({ error: 'Name and phone are required' }, { status: 400 });
+      return NextResponse.json({ error: "Name and phone are required" }, { status: 400 });
     }
 
-    // 🎯 NEW: Validate and normalize source
-    const normalizedSource = source && isValidLeadSource(source) ? source : DEFAULT_LEAD_SOURCE;
-
-    // 🔒 SECURITY: Verify campaign ownership if campaignId is provided
-    if (campaignId) {
-      const supabase = createAdminClient();
-      const { data: campaign, error: campaignError } = await supabase
-        .from('campaigns')
-        .select('id, name, created_by')
-        .eq('id', campaignId)
-        .single();
-
-      if (campaignError || !campaign) {
-        return NextResponse.json({ 
-          error: 'Campaign not found' 
-        }, { status: 404 });
-      }
-
-      // Check if user owns the campaign or is admin
-      if (campaign.created_by !== auth.userId && !auth.email?.includes('admin')) {
-        return NextResponse.json({ 
-          error: 'Access denied - You can only use your own campaigns' 
-        }, { status: 403 });
-      }
-    }
-
-    // 🧠 SMART SCORING: Use intelligent algorithm instead of random
-    const leadData = { name, email, phone, budget, source: normalizedSource };
-    const score = calculateLeadScore(leadData);
-
-    const supabase = createAdminClient();
-    const { data: lead, error } = await supabase
-      .from('leads')
-      .insert([
-        {
-          name,
-          phone,
-          email: email ?? null,
-          budget: budget ?? null,
-          source: normalizedSource, // 🎯 NEW: Normalized source
-          campaign_id: campaignId || null, // 🎯 NEW: Link to campaign
-          status: 'new',
-          score: score, // 🧠 Smart scoring instead of random
-          assignedTo: auth.userId, // 🔒 SECURITY: Assign to authenticated user
-          createdBy: auth.userId // Track who created the lead
+    // 3. FIND DEFAULT PIPELINE & STAGE
+    const defaultPipeline = await db.pipeline.findFirst({
+      where: { isDefault: true },
+      include: {
+        stages: {
+          orderBy: { order: 'asc' },
+          take: 1
         }
-      ])
-      .select(`
-        *,
-        campaign:campaign_id (
-          id,
-          name,
-          status,
-          platform
-        )
-      `)
-      .single();
+      }
+    });
 
-    if (error) {
-      console.error('[LEADS API] Database error:', error);
-      return NextResponse.json({ error: error.message ?? 'Failed to insert lead' }, { status: 500 });
+    const pipelineId = defaultPipeline?.id;
+    const stageId = defaultPipeline?.stages[0]?.id;
+
+    // 4. DETERMINE ASSIGNMENT
+    let assignedUserId: string | null | undefined = null;
+
+    if (authType === 'SESSION' && authenticatedUserId) {
+      // If created by a logged-in user, assign to them (Self-assign)
+      // Or if they provided an `assignedTo` in body (not implemented yet), use that.
+      // For now, default to self-assign.
+      assignedUserId = authenticatedUserId;
+    } else {
+      // API KEY (Landing Page) -> Auto-assign to Admin
+      assignedUserId = process.env.DEFAULT_ADMIN_USER_ID;
+
+      if (!assignedUserId) {
+        // Find first admin
+        const adminUser = await db.user.findFirst({ where: { role: 'admin' } });
+        assignedUserId = adminUser?.id;
+      }
+
+      if (!assignedUserId) {
+        // Fallback to any user
+        const anyUser = await db.user.findFirst();
+        assignedUserId = anyUser?.id;
+      }
     }
 
-    console.log('[LEADS API] Lead created successfully:', {
-      leadId: lead.id,
-      score: score,
-      source: normalizedSource,
-      campaignId: campaignId,
-      createdBy: auth.userId,
-      timestamp: new Date().toISOString()
+    if (!assignedUserId) {
+      return NextResponse.json({ error: "Internal Configuration Error: No users found" }, { status: 500 });
+    }
+
+    // 5. CREATE LEAD (PRISMA)
+    const normalizedSource = source && isValidLeadSource(source) ? source : (authType === 'API_KEY' ? 'landing-ad' : DEFAULT_LEAD_SOURCE);
+
+    const lead = await db.lead.create({
+      data: {
+        name,
+        phone,
+        email: email || null,
+        budget: budget ? String(budget) : null,
+        source: normalizedSource,
+        status: "new",
+        pipelineId: pipelineId,
+        stageId: stageId,
+        assignedTo: assignedUserId,
+        campaignId: (campaignId && campaignId !== 'No campaign' && campaignId !== "") ? campaignId : null,
+        // createdBy is not in schema, ignoring
+      }
     });
+
+    // 6. CREATE NOTIFICATION 
+    // Logic: If I assign to myself (Session), I likely don't need a "New Lead" notification unless requested?
+    // Actually, user requirement: "When lead from ad arrives -> Notification to Admin".
+    // If user adds manually, notification is probably noise.
+    if (authType === 'API_KEY') {
+      await db.notification.create({
+        data: {
+          type: "LEAD_ASSIGNMENT",
+          title: "New Lead from Landing Page",
+          body: `New lead assigned: ${name} (${phone})`,
+          userId: assignedUserId,
+          leadId: lead.id,
+          isRead: false
+        }
+      });
+    }
+
+    console.log(`[LEADS API] Lead created: ${lead.id} assigned to ${assignedUserId} via ${authType}`);
 
     return NextResponse.json({
       success: true,
-      lead,
-      scoringBreakdown: {
-        score,
-        method: 'intelligent',
-        factors: {
-          budget: leadData.budget ? 'calculated' : 'not_provided',
-          source: normalizedSource,
-          completeness: (email && phone) ? 'full' : 'partial',
-          nameQuality: name.includes(' ') ? 'full' : 'basic'
-        }
-      }
+      leadId: lead.id
     });
-  } catch (error) {
-    console.error('[LEADS API] Unexpected error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+
+  } catch (error: any) {
+    console.error("[LEADS API] Error:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
 
-/**
- * GET endpoint to retrieve leads (with filtering and pagination)
- */
 export async function GET(req: NextRequest) {
-  try {
-    // 🔒 SECURITY: Require authentication
-    const auth = await requireAuth(req);
-    
-    const { searchParams } = new URL(req.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const stage = searchParams.get('stage');
-    const source = searchParams.get('source');
-    const campaignId = searchParams.get('campaignId'); // 🎯 NEW: Filter by campaign
-
-    const supabase = createAdminClient();
-    let query = supabase
-      .from('leads')
-      .select(`
-        *,
-        stage:stageId (
-          id,
-          name,
-          color,
-          order
-        ),
-        campaign:campaign_id (
-          id,
-          name,
-          status,
-          platform
-        )
-      `)
-      .eq('assignedTo', auth.userId) // 🔒 SECURITY: Only user's leads
-      .order('createdAt', { ascending: false })
-      .range((page - 1) * limit, page * limit - 1);
-
-    // Apply filters
-    if (stage) {
-      query = query.eq('stageId', stage);
-    }
-    if (source) {
-      query = query.eq('source', source);
-    }
-    if (campaignId) {
-      query = query.eq('campaign_id', campaignId); // 🎯 NEW: Campaign filter
-    }
-
-    const { data: leads, error, count } = await query;
-
-    if (error) {
-      console.error('[LEADS API] Fetch error:', error);
-      return NextResponse.json({ error: 'Failed to fetch leads' }, { status: 500 });
-    }
-
-    return NextResponse.json({
-      success: true,
-      leads: leads || [],
-      pagination: {
-        page,
-        limit,
-        total: count || 0,
-        pages: Math.ceil((count || 0) / limit)
-      }
-    });
-  } catch (error) {
-    console.error('[LEADS API] GET error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json({ error: "Method not allowed. Use POST." }, { status: 405 });
 }

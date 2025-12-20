@@ -1,116 +1,88 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { prisma } from "@/lib/db";
+import { requireAuth } from "@/lib/api-auth";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-// GET: الحصول على تفاصيل حملة محددة
-export async function GET(
-    req: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     try {
-        const { id } = await params;
+        const user = await requireAuth(req);
+        if (!user || !user.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-        const { data, error } = await supabase
-            .from("InstagramCampaign")
-            .select("*")
-            .eq("id", id)
-            .single();
+        const campaign = await prisma.instagramCampaign.findUnique({
+            where: { id: params.id },
+            include: {
+                ads: true
+            }
+        });
 
-        if (error) {
-            return NextResponse.json({ error: error.message }, { status: 500 });
+        if (!campaign) {
+            return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
         }
 
-        if (!data) {
-            return NextResponse.json(
-                { error: "Campaign not found" },
-                { status: 404 }
-            );
+        // Verify ownership
+        const account = await prisma.instagramAccount.findUnique({ where: { id: campaign.accountId } });
+        if (account?.userId !== user.id && user.role !== 'admin') {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
         }
-
-        // جلب الإعلانات المرتبطة بهذه الحملة
-        const { data: ads, error: adsError } = await supabase
-            .from("InstagramAd")
-            .select("*")
-            .eq("campaignId", id);
 
         return NextResponse.json({
             success: true,
-            campaign: data,
-            ads: ads || [],
+            campaign,
+            ads: campaign.ads || []
         });
-    } catch (error: any) {
-        console.error("[INSTAGRAM_CAMPAIGN_GET_ERROR]", error);
-        return NextResponse.json(
-            { error: "Failed to fetch campaign" },
-            { status: 500 }
-        );
+    } catch (error) {
+        console.error("Error fetching campaign:", error);
+        return NextResponse.json({ error: "Internal Error" }, { status: 500 });
     }
 }
 
-// PUT: تحديث حملة
-export async function PUT(
-    req: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
-) {
+export async function PUT(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     try {
-        const { id } = await params;
+        const user = await requireAuth(req);
+        const { id } = params;
         const body = await req.json();
 
-        const { data, error } = await supabase
-            .from("InstagramCampaign")
-            .update(body)
-            .eq("id", id)
-            .select()
-            .single();
-
-        if (error) {
-            return NextResponse.json({ error: error.message }, { status: 500 });
-        }
-
-        return NextResponse.json({
-            success: true,
-            campaign: data,
-            message: "تم تحديث الحملة بنجاح",
+        // Verify ownership first
+        const existing = await prisma.instagramCampaign.findUnique({
+            where: { id },
+            include: { account: true }
         });
-    } catch (error: any) {
-        console.error("[INSTAGRAM_CAMPAIGN_PUT_ERROR]", error);
-        return NextResponse.json(
-            { error: "Failed to update campaign" },
-            { status: 500 }
-        );
+
+        if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+        if (existing.account.userId !== user.id && user.role !== 'admin') return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+        const campaign = await prisma.instagramCampaign.update({
+            where: { id },
+            data: body
+        });
+
+        return NextResponse.json({ success: true, campaign, message: "Campaign updated" });
+    } catch (error) {
+        console.error("Error updating campaign:", error);
+        return NextResponse.json({ error: "Internal Error" }, { status: 500 });
     }
 }
 
-// DELETE: حذف حملة
-export async function DELETE(
-    req: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     try {
-        const { id } = await params;
+        const user = await requireAuth(req);
+        const { id } = params;
 
-        const { error } = await supabase
-            .from("InstagramCampaign")
-            .delete()
-            .eq("id", id);
-
-        if (error) {
-            return NextResponse.json({ error: error.message }, { status: 500 });
-        }
-
-        return NextResponse.json({
-            success: true,
-            message: "تم حذف الحملة بنجاح",
+        // Verify ownership first
+        const existing = await prisma.instagramCampaign.findUnique({
+            where: { id },
+            include: { account: true }
         });
-    } catch (error: any) {
-        console.error("[INSTAGRAM_CAMPAIGN_DELETE_ERROR]", error);
-        return NextResponse.json(
-            { error: "Failed to delete campaign" },
-            { status: 500 }
-        );
+
+        if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+        if (existing.account.userId !== user.id && user.role !== 'admin') return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+        await prisma.instagramCampaign.delete({ where: { id } });
+        return NextResponse.json({ success: true, message: "Campaign deleted" });
+    } catch (error) {
+        console.error("Error deleting campaign:", error);
+        return NextResponse.json({ error: "Internal Error" }, { status: 500 });
     }
 }

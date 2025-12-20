@@ -13,7 +13,7 @@ const ZADARMA_API_SECRET = env.ZADARMA_API_SECRET;
 const ZADARMA_API_URL = env.ZADARMA_API_URL || 'https://api.zadarma.com/v1';
 
 if (!ZADARMA_API_KEY || !ZADARMA_API_SECRET) {
-    console.warn('⚠️ ZADARMA_API_KEY or ZADARMA_API_SECRET is missing. Zadarma features will not work.');
+    console.warn('⚠️ ZADARMA_API_KEY or ZADARMA_API_SECRET is missing. Zadarma features will be disabled (Soft Fail).');
 }
 
 /**
@@ -62,7 +62,8 @@ async function zadarmaRequest(
     httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET'
 ): Promise<any> {
     if (!ZADARMA_API_KEY || !ZADARMA_API_SECRET) {
-        throw new Error('Zadarma API credentials are not configured');
+        console.warn('[Zadarma] Credentials missing, skipping request.');
+        return { status: 'skipped', success: false, message: 'No credentials' };
     }
 
     const signature = generateSignature(method, params);

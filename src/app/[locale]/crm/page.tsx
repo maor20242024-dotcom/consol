@@ -30,6 +30,7 @@ export default function CRMPage() {
     const [stages, setStages] = useState<Stage[]>([]);
     const [loading, setLoading] = useState(true);
     const [view, setView] = useState<"kanban" | "list">("kanban");
+    const [cardDensity, setCardDensity] = useState<"CLASSIC" | "COMPACT" | "STACK">("CLASSIC");
     const [addLeadOpen, setAddLeadOpen] = useState(false);
     const [pipelineId, setPipelineId] = useState("");
     const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -120,13 +121,37 @@ export default function CRMPage() {
                             <ImportLeadsDialog onSuccess={loadData} />
 
                             <Tabs value={view} onValueChange={(v) => setView(v as "kanban" | "list")} className="hidden md:block">
-                                <TabsList>
-                                    <TabsTrigger value="kanban"><LayoutGrid className="w-4 h-4 mr-2" />Board</TabsTrigger>
-                                    <TabsTrigger value="list"><List className="w-4 h-4 mr-2" />List</TabsTrigger>
+                                <TabsList className="bg-primary/10 border-primary/20">
+                                    <TabsTrigger value="kanban" className="data-[state=active]:bg-primary"><LayoutGrid className="w-4 h-4 mr-2" />Board</TabsTrigger>
+                                    <TabsTrigger value="list" className="data-[state=active]:bg-primary"><List className="w-4 h-4 mr-2" />List</TabsTrigger>
                                 </TabsList>
                             </Tabs>
+
+                            {view === "kanban" && (
+                                <div className="flex bg-muted/50 p-1 rounded-lg border border-primary/10">
+                                    <Button
+                                        variant={cardDensity === "CLASSIC" ? "secondary" : "ghost"}
+                                        size="sm"
+                                        className="h-8 px-2 text-[10px] font-bold"
+                                        onClick={() => setCardDensity("CLASSIC")}
+                                    >CLASSIC</Button>
+                                    <Button
+                                        variant={cardDensity === "COMPACT" ? "secondary" : "ghost"}
+                                        size="sm"
+                                        className="h-8 px-2 text-[10px] font-bold"
+                                        onClick={() => setCardDensity("COMPACT")}
+                                    >COMPACT</Button>
+                                    <Button
+                                        variant={cardDensity === "STACK" ? "secondary" : "ghost"}
+                                        size="sm"
+                                        className="h-8 px-2 text-[10px] font-bold"
+                                        onClick={() => setCardDensity("STACK")}
+                                    >STACK</Button>
+                                </div>
+                            )}
+
                             <Button
-                                className="flex items-center gap-2 h-10 px-4"
+                                className="flex items-center gap-2 h-10 px-4 bg-primary hover:bg-primary/80 shadow-[0_0_15px_rgba(var(--primary),0.3)] transition-all"
                                 onClick={() => setAddLeadOpen(true)}
                             >
                                 <Plus className="w-4 h-4" />
@@ -137,7 +162,7 @@ export default function CRMPage() {
                 >
                     <div className="flex flex-col h-full gap-4">
                         {/* Filters Section */}
-                        <div className="bg-card/50 backdrop-blur-sm p-4 rounded-xl border border-border/50">
+                        <div className="bg-card/30 backdrop-blur-xl p-4 rounded-3xl border border-primary/10 shadow-2xl">
                             <LeadFilters onFiltersChange={handleFiltersChange} loading={loading} />
                         </div>
 
@@ -152,6 +177,7 @@ export default function CRMPage() {
                                         initialStages={stages}
                                         initialLeads={leads as Lead[]}
                                         onViewDetails={handleViewDetails}
+                                        viewMode={cardDensity}
                                     />
                                 ) : (
                                     <LeadListView

@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
             // Normalize values if needed, otherwise rely on schema defaults/Types
             leadsToCreate.push({
                 name: String(name).trim(),
-                phone: phone ? String(phone).trim() : "Unknown",
+                phone: phone ? String(phone).trim() : null,
                 email: email ? String(email).trim() : null,
                 budget: budget ? String(budget).trim() : null,
                 status: rawStatus ? String(rawStatus).toLowerCase() : undefined,
@@ -60,6 +60,7 @@ export async function POST(req: NextRequest) {
             // Prisma createMany is efficient
             const result = await prisma.lead.createMany({
                 data: leadsToCreate,
+                skipDuplicates: true, // helpful if email/phone constraints exist (though schema currently doesn't enforce unique email on Lead)
             });
             importedCount = result.count;
         }

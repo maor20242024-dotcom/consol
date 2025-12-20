@@ -1,152 +1,137 @@
-import { cookies } from "next/headers";
-import { createServerClient } from '@supabase/ssr';
 import { NextRequest } from "next/server";
 import { prisma } from './db';
+import { stackServerApp } from "@/lib/stack";
+import { cookies } from "next/headers";
 
 type AuthUser = {
   id: string;
   email?: string | null;
   userId?: string;
-  role?: string; // "user" | "admin"
+  role?: string; // "user" | "admin" | "superadmin"
 };
 
 interface AuthOptions {
   allowAnonymous?: boolean;
-  requiredRole?: string; // "admin" | "user"
+  requiredRole?: string; // "admin" | "user" | "superadmin"
 }
 
 export async function requireAuth(req?: NextRequest, options?: AuthOptions): Promise<AuthUser> {
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookies().getAll();
-        },
-        setAll() {},
-      },
-    }
-  );
-  const { data, error } = await supabase.auth.getUser();
+  // 1. CRM API Key Bypass
+  if (req) {
+    const apiKeyHeader = req.headers.get('x-api-key');
+    const authHeader = req.headers.get('authorization');
+    const crmApiKey = process.env.IMPERIUM_CRM_API_KEY || process.env.CRM_API_KEY;
 
-  // مستخدم حقيقي
-  if (!error && data?.user) {
-    const authUser: AuthUser = { 
-      id: data.user.id, 
-      email: data.user.email, 
-      userId: data.user.id 
-    };
-    
-    // Fetch user role from database
+    let providedKey = apiKeyHeader;
+    if (!providedKey && authHeader?.startsWith('Bearer ')) {
+      providedKey = authHeader.split(' ')[1];
+    }
+
+    if (providedKey && crmApiKey && providedKey === crmApiKey) {
+      return {
+        id: 'crm-system',
+        email: 'system@imperiumgate.com',
+        userId: 'crm-system',
+        role: 'superadmin'
+      };
+    }
+  }
+
+  // 2. Local Imperium Session (Custom Auth)
+  const cookieStore = cookies();
+  const localSessionId = cookieStore.get("imperium_session")?.value;
+
+  if (localSessionId) {
     try {
-      const user = await prisma.user.findUnique({
-        where: { id: data.user.id },
-        select: { role: true }
+      const dbUser = await prisma.user.findUnique({
+        where: { id: localSessionId },
+        select: { id: true, email: true, role: true }
       });
-      
-      authUser.role = user?.role || 'user';
+
+      if (dbUser) {
+        const authUser: AuthUser = {
+          id: dbUser.id,
+          email: dbUser.email,
+          userId: dbUser.id,
+          role: dbUser.role
+        };
+
+        // Check Role Hierarchy
+        if (options?.requiredRole) {
+          const roles = ['user', 'admin', 'superadmin'];
+          const userLevel = roles.indexOf(authUser.role || 'user');
+          const requiredLevel = roles.indexOf(options.requiredRole);
+
+          if (userLevel < requiredLevel) {
+            throw new Error(`Insufficient privileges - ${options.requiredRole} role required`);
+          }
+        }
+
+        return authUser;
+      }
+    } catch (e) {
+      console.warn('[API AUTH] Local session verification failed');
+    }
+  }
+
+  // 3. Fallback to Stack Auth
+  const user = await stackServerApp.getUser();
+  if (user) {
+    const authUser: AuthUser = {
+      id: user.id || "",
+      email: user.primaryEmail,
+      userId: user.id || ""
+    };
+
+    try {
+      let dbUser = await prisma.user.findUnique({
+        where: { id: user.id || "" },
+        select: { id: true, role: true }
+      });
+
+      if (!dbUser && user.primaryEmail) {
+        dbUser = await prisma.user.findUnique({
+          where: { email: user.primaryEmail },
+          select: { id: true, role: true }
+        });
+
+        if (dbUser) {
+          await prisma.user.update({
+            where: { email: user.primaryEmail },
+            data: { id: user.id }
+          });
+        }
+      }
+
+      authUser.role = dbUser?.role || 'user';
     } catch (dbError) {
-      console.warn('[API AUTH] Failed to fetch user role:', dbError);
-      authUser.role = 'user'; // Default fallback
+      authUser.role = 'user';
     }
-    
-    // Check role requirements
-    if (options?.requiredRole && authUser.role !== options.requiredRole) {
-      throw new Error(`Insufficient privileges - ${options.requiredRole} role required`);
+
+    if (options?.requiredRole) {
+      const roles = ['user', 'admin', 'superadmin'];
+      const userLevel = roles.indexOf(authUser.role || 'user');
+      const requiredLevel = roles.indexOf(options.requiredRole);
+
+      if (userLevel < requiredLevel) {
+        throw new Error(`Insufficient privileges - ${options.requiredRole} role required`);
+      }
     }
-    
-    // Handle anonymous access if allowed
-    if (options?.allowAnonymous && !authUser.id) {
-      return { id: "anonymous", email: null, userId: "anonymous", role: "user" };
-    }
-    
+
     return authUser;
   }
 
-  // Handle anonymous access
   if (options?.allowAnonymous) {
     return { id: "anonymous", email: null, userId: "anonymous" };
   }
 
-  // وضع التطوير - مستخدم وهمي
-  if (process.env.NODE_ENV === "development") {
-    console.warn(
-      "[requireAuth] Using DEV FAKE USER (development only)."
-    );
-
-    return {
-      id: "dev-user-id",
-      email: "dev@imperiumgate.local",
-      userId: "dev-user-id",
-    };
-  }
-
-  // الإنتاج
-  throw new Error("Unauthorized - No session found");
+  throw new Error("Unauthorized - Access Denied");
 }
 
-/**
- * Middleware for API authentication (legacy version)
- * Validates user session and returns user info
- */
-export async function requireAuthWithReq(req: NextRequest) {
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return req.cookies.getAll();
-        },
-        setAll() {},
-      },
-    }
-  );
-
-  const { data: { session }, error } = await supabase.auth.getSession();
-
-  if (error) {
-    console.error('[API AUTH ERROR]', error);
-    throw new Error('Authentication failed');
-  }
-
-  if (!session) {
-    throw new Error('Unauthorized - No session found');
-  }
-
-  return {
-    session,
-    userId: session.user.id,
-    email: session.user.email,
-    user: session.user
-  };
-}
-
-/**
- * Checks if user has admin privileges
- */
 export async function requireAdminAuth(req: NextRequest) {
-  const auth = await requireAuthWithReq(req);
-  
-  // For now, check if user email contains admin domain or specific pattern
-  // TODO: Implement proper role-based access control
-  const isAdmin = auth.email?.includes('admin') || auth.email?.includes('imperiumgate');
-  
-  if (!isAdmin) {
-    throw new Error('Insufficient privileges - Admin access required');
-  }
-  
-  return auth;
+  return await requireAuth(req, { requiredRole: 'admin' });
 }
 
-/**
- * Optional auth - returns user info if available, null otherwise
- */
-export async function optionalAuth(req: NextRequest) {
-  try {
-    return await requireAuthWithReq(req);
-  } catch (error) {
-    return null;
-  }
+export async function requireSuperAdminAuth(req: NextRequest) {
+  return await requireAuth(req, { requiredRole: 'superadmin' });
 }

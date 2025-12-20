@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { supabase } from "@/lib/supabase";
+import { useStackApp } from "@stackframe/stack";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +17,7 @@ export default function AdminPage() {
     const t = useTranslations("Admin");
     const router = useRouter();
     const pathname = usePathname();
+    const stackApp = useStackApp();
     const locale = pathname.split('/')[1] || 'en';
     const [stats, setStats] = useState({ totalLeads: 0, totalUsers: 0, totalCampaigns: 0 });
     const [loading, setLoading] = useState(true);
@@ -30,15 +31,11 @@ export default function AdminPage() {
 
     const loadStats = async () => {
         try {
-            const { count: leadsCount } = await supabase.from("leads").select("*", { count: "exact", head: true });
-            const { count: usersCount } = await supabase.from("profiles").select("*", { count: "exact", head: true });
-            const { count: campaignsCount } = await supabase.from("campaigns").select("*", { count: "exact", head: true });
-
-            setStats({
-                totalLeads: leadsCount || 0,
-                totalUsers: usersCount || 0,
-                totalCampaigns: campaignsCount || 0
-            });
+            const res = await fetch('/api/admin/stats');
+            if (res.ok) {
+                const data = await res.json();
+                setStats(data);
+            }
         } catch (error) {
             console.error("Error loading stats:", error);
         } finally {
@@ -61,7 +58,7 @@ export default function AdminPage() {
     };
 
     const handleLogout = async () => {
-        await supabase.auth.signOut();
+        await stackApp.signOut();
         router.push(`/${locale}/login`);
     };
 

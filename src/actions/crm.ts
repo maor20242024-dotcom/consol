@@ -230,15 +230,20 @@ export async function getFilteredLeads(filters: {
 
 // ... existing code ...
 
-export async function updateLead(leadId: string, data: Partial<Lead>) {
+export async function updateLead(leadId: string, data: any) {
     try {
+        const updateData: any = { ...data };
+
+        // Handle Decimal conversion if present
+        if (updateData.expectedValue) {
+            updateData.expectedValue = Number(updateData.expectedValue);
+        }
+
         await prisma.lead.update({
             where: { id: leadId },
-            data: {
-                ...data,
-                expectedValue: data.expectedValue ? Number(data.expectedValue) : undefined,
-            },
+            data: updateData,
         });
+
         revalidatePath("/[locale]/crm", "page");
         return { success: true };
     } catch (error) {
@@ -247,7 +252,24 @@ export async function updateLead(leadId: string, data: Partial<Lead>) {
     }
 }
 
+/**
+ * 🎯 NEW: Get all employees (admins/users) for lead assignment
+ */
+export async function getEmployees() {
+    try {
+        const employees = await prisma.user.findMany({
+            where: { isActive: true },
+            select: { id: true, name: true, email: true, role: true }
+        });
+        return { success: true, employees };
+    } catch (error) {
+        console.error("Failed to fetch employees:", error);
+        return { success: false, error: "Failed to fetch employees" };
+    }
+}
+
 export async function deleteLeads(leadIds: string[]) {
+    // ... existing code ...
     try {
         await prisma.lead.deleteMany({
             where: { id: { in: leadIds } },

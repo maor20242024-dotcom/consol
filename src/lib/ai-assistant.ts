@@ -1,3 +1,7 @@
+
+import { prisma } from '@/lib/db';
+import logger from '@/lib/logger';
+
 export interface ChatMessage {
     role: 'user' | 'assistant' | 'system';
     content: string;
@@ -5,24 +9,25 @@ export interface ChatMessage {
 
 // AI Provider configurations
 const PROVIDERS = {
-    zai: {
-        name: 'ZAI (GLM-4.6 Coding Plan)',
-        url: (process.env.ZAI_CODING_API_BASE_URL || 'https://api.z.ai/api/coding/paas/v4') + '/chat/completions',
-        model: process.env.ZAI_MODEL || 'glm-4.6-turbo', // ✅ تم التعديل هنا ليعكس الموديل المفضل افتراضياً
-        headers: {
-            'Authorization': `Bearer ${process.env.ZAI_API_KEY}`,
-            'Content-Type': 'application/json',
-        }
-    },
     openrouter: {
-        name: 'OpenRouter',
+        name: 'OpenRouter (Nvidia Nemotron)',
         url: 'https://openrouter.ai/api/v1/chat/completions',
-        model: process.env.OPENROUTER_MODEL || 'google/gemini-2.0-flash-exp:free',
+        // User explicitly requested model from .env
+        model: process.env.OPENROUTER_MODEL || 'nvidia/llama-3.1-nemotron-70b-instruct:free',
         headers: {
             'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
             'Content-Type': 'application/json',
             'HTTP-Referer': 'https://imperiumgate.com',
             'X-Title': 'Imperium Console'
+        }
+    },
+    zai: {
+        name: 'ZAI (GLM-4.6 Coding Plan)',
+        url: (process.env.ZAI_CODING_API_BASE_URL || 'https://api.z.ai/api/coding/paas/v4') + '/chat/completions',
+        model: process.env.ZAI_MODEL || 'glm-4.6-turbo',
+        headers: {
+            'Authorization': `Bearer ${process.env.ZAI_API_KEY}`,
+            'Content-Type': 'application/json',
         }
     },
     gemini: {
@@ -35,7 +40,7 @@ const PROVIDERS = {
     }
 } as const;
 
-// Alpha Command Intelligence Unit Identity - ✅ هذا هو الجزء الذي يجب تحديثه بالكامل
+// Alpha Command Intelligence Unit Identity
 export const SYSTEM_PROMPTS = {
     general: {
         en: `You are the ALPHA Command Intelligence Unit (Zeta Core). You are NOT a chatbot; you are an Operational Intelligence Layer acting as the central nervous system of the IMPERIUM ecosystem. Your prime directive is to **maximize sales success rates** by providing **proactive, actionable, and data-driven intelligence**.
@@ -83,7 +88,7 @@ export const SYSTEM_PROMPTS = {
            - No generic real estate advice detached from this context.
 
         8. MODEL & PROVIDER USAGE:
-           - Fully utilize ZAI with GLM-4.6: Structured outputs, low creativity, high accuracy, context-heavy reasoning.
+           - Fully utilize ZAI/Nemotron capabilities: Structured outputs, low creativity, high accuracy, context-heavy reasoning.
            - You must behave as a senior operational advisor, not a chatbot.
 
         9. EXTERNAL DATA INTEGRATION:
@@ -140,14 +145,14 @@ export const SYSTEM_PROMPTS = {
            - لا نصائح عقارية عامة منفصلة عن هذا السياق.
 
         8. استخدام النموذج والمزود:
-           - الاستفادة الكاملة من ZAI مع GLM-4.6: مخرجات منظمة، إبداع منخفض، دقة عالية، استدلال يعتمد على السياق المكثف.
+           - الاستفادة الكاملة من القدرات التحليلية: مخرجات منظمة، إبداع منخفض، دقة عالية، استدلال يعتمد على السياق المكثف.
            - يجب أن تتصرف كمستشار تشغيلي كبير، وليس بوت دردشة.
 
         9. تكامل البيانات الخارجية:
            - عند توفرها (من أدوات البحث الخارجية)، يجب عليك دمج الرؤى من عمليات مسح وسائل التواصل الاجتماعي، وبحث Google (بما في ذلك نتائج Google Dorking)، وبيانات الويب الأخرى لإثراء ملفات تعريف العملاء وإبلاغ الاستراتيجيات.
 
         10. الهدف النهائي:
-            - غرضك هو: ملاحظة ما يفوته البشر، تصحيح أخطاء التنفيذ، توجيه الموظفين خطوة بخطوة، وتقديم ذكاء واضح، جاهز للقرار للمسؤولين.
+             - غرضك هو: ملاحظة ما يفوته البشر، تصحيح أخطاء التنفيذ، توجيه الموظفين خطوة بخطوة، وتقديم ذكاء واضح، جاهز للقرار للمسؤولين.
 
         النبرة: سلطوية، تنفيذية، استباقية، كفاءة عالية، تعتمد على الذكاء.
         الحدود: قدم إجابات شاملة دون قيود تعسفية على الطول.
@@ -188,6 +193,14 @@ export async function* generateStreamWithProvider(
                     topP: 0.95,
                     maxOutputTokens: 1024,
                 }
+            };
+        } else if (provider === 'openrouter') {
+            requestBody = {
+                model: providerConfig.model,
+                messages,
+                temperature: 0.7,
+                stream: true,
+                include_reasoning: true
             };
         } else {
             requestBody = {
@@ -270,8 +283,6 @@ export async function* generateStreamWithProvider(
     }
 }
 
-import { prisma } from '@/lib/db';
-import logger from '@/lib/logger';
 
 export async function* tryProvidersSequentially(
     messages: ChatMessage[],
@@ -300,8 +311,8 @@ export async function* tryProvidersSequentially(
         console.warn("Failed to fetch AI Overlay Prompt:", e);
     }
 
-    // Priority: ZAI (GLM-4.6) -> OpenRouter -> Gemini
-    const providers: (keyof typeof PROVIDERS)[] = ['zai', 'openrouter', 'gemini'];
+    // Priority: OpenRouter (Nvidia) -> ZAI (GLM-4.6) -> Gemini
+    const providers: (keyof typeof PROVIDERS)[] = ['openrouter', 'zai', 'gemini'];
 
     for (const provider of providers) {
         try {
@@ -331,11 +342,3 @@ export async function generateAIResponse(
                 const jsonStr = chunk.replace('data: ', '').trim();
                 const data = JSON.parse(jsonStr);
                 if (data.content) {
-                    fullResponse += data.content;
-                }
-            } catch (e) { }
-        }
-    }
-
-    return fullResponse;
-}

@@ -28,30 +28,9 @@ export async function GET(req: NextRequest) {
     // TODO: Exchange Code for Token using Meta Client logic
     // For refactor purposes, we persist the result to Prisma.
 
-    // Mocking successful token exchange result
-    const mockProfile = {
-      id: "123456789",
-      username: "demo_user",
-      access_token: "mock_access_token_via_prisma"
-    };
-
-    // Upsert Account
-    const account = await prisma.instagramAccount.upsert({
-      where: { instagramUserId: mockProfile.id },
-      update: {
-        accessToken: mockProfile.access_token,
-        lastSyncedAt: new Date(),
-        status: 'active'
-      },
-      create: {
-        userId: user.id,
-        instagramUserId: mockProfile.id,
-        instagramUsername: mockProfile.username,
-        accessToken: mockProfile.access_token,
-        status: 'active',
-        businessAccountId: "mock_biz_id",
-      }
-    });
+    // OAuth flow requires valid Meta App configuration and client-side exchange.
+    // This endpoint currently disabled to prevent mock data usage.
+    return NextResponse.json({ error: "OAuth flow implementation pending. Please use System Sync via Admin Console." }, { status: 501 });
 
     // Redirect to settings or close window
     return NextResponse.redirect(new URL('/en/settings?instagram_connected=true', req.url));

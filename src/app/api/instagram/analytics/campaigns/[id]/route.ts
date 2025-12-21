@@ -19,7 +19,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
         if (!campaign) return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
         if (campaign.account?.userId !== user.id && user.role !== 'admin') return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-        // Fetch Performance Data (Mock logic or real if table populated)
+        // Fetch Performance Data
         // Aggregating ad performance
         const ads = await prisma.instagramAd.findMany({
             where: { campaignId: id },

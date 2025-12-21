@@ -4,13 +4,13 @@ import { extractInstagramMessages } from '@/lib/meta/instagram';
 import { env } from '@/lib/env';
 import { metaWebhook, error } from '@/lib/logger';
 import { prisma } from '@/lib/db';
+import { generateAIResponse, SYSTEM_PROMPTS } from '@/lib/ai-assistant';
+import { sendInstagramMessage, sendWhatsAppMessage } from '@/lib/meta-client';
 
 /**
- * Meta Webhook Handler
- * Handles Instagram and WhatsApp webhooks in unified endpoint
+ * Meta Webhook Handler - Unified Ghost Protocol
  */
 
-// Webhook verification for Meta
 export async function GET(req: NextRequest) {
   try {
     const searchParams = req.nextUrl.searchParams;
@@ -18,217 +18,293 @@ export async function GET(req: NextRequest) {
     const token = searchParams.get('hub.verify_token');
     const challenge = searchParams.get('hub.challenge');
 
-    metaWebhook('Webhook verification attempt', {
-      mode,
-      hasToken: !!token,
-      hasChallenge: !!challenge
-    });
-
-    // Verify webhook
     if (mode === 'subscribe' && token === 'imperiumgate_meta_verify_2024') {
-      metaWebhook('Webhook verification successful');
       return new NextResponse(challenge);
     }
-
-    metaWebhook('Webhook verification failed', {
-      expectedToken: env.META_WEBHOOK_VERIFY_TOKEN,
-      receivedToken: token,
-      mode
-    });
-
     return NextResponse.json({ error: 'Invalid verification' }, { status: 403 });
   } catch (err) {
-    error('Webhook verification error', err);
     return NextResponse.json({ error: 'Verification failed' }, { status: 403 });
   }
 }
 
-// Handle incoming webhook events
 export async function POST(req: NextRequest) {
   try {
     const body = await req.text();
     const signature = req.headers.get('x-hub-signature-256');
-    const contentType = req.headers.get('content-type');
 
-    metaWebhook('Incoming webhook request', {
-      hasSignature: !!signature,
-      contentType,
-      bodyLength: body.length
-    });
-
-    // Verify webhook signature
-    // In dev mode/without signature secret, we might skip verification or warn
     if (process.env.NODE_ENV === 'production' && (!signature || !verifyWebhookSignature(body, signature))) {
-      error('Invalid webhook signature', {
-        hasSignature: !!signature,
-        signatureLength: signature?.length
-      });
       return NextResponse.json({ error: 'Invalid signature' }, { status: 403 });
     }
 
-    // Parse JSON safely
     let data;
     try {
       data = JSON.parse(body);
-    } catch (parseError) {
-      error('JSON parsing error', parseError);
-      metaWebhook('Raw body received', body.substring(0, 500));
-      return NextResponse.json({ success: true }); // Always return 200
+    } catch (e) {
+      return NextResponse.json({ success: true });
     }
 
-    metaWebhook('Webhook payload received', {
-      object: data.object,
-      entryCount: data.entry?.length
-    });
-
-    // Handle Instagram messages
+    // 1. Handle Instagram
     if (data.object === 'instagram') {
       const messages = extractInstagramMessages(data);
-      metaWebhook(`Processing ${messages.length} Instagram messages`);
-
-      // Store messages in database
-      // Use imported prisma client
-      try {
-        for (const message of messages) {
-          metaWebhook('Processing Instagram message', {
-            senderId: message.sender.id,
-            hasText: !!message.message?.text,
-            timestamp: message.timestamp
-          });
-
-          // Find or get account ID if needed. For now assuming normalized structure or we need to lookup account by sender/recipient
-          // Assuming recipient.id is our account ID usually for incoming messages
-          const igAccount = await prisma.instagramAccount.findFirst({
-            where: { instagramUserId: message.recipient.id }
-          });
-
-          // Store in instagram_messages table
-          await prisma.instagramMessage.create({
-            data: {
-              senderId: message.sender.id,
-              recipientId: message.recipient.id,
-              message: message.message?.text || '',
-              timestamp: new Date(message.timestamp),
-              messageId: message.message?.mid || `msg_${Date.now()}`,
-              isFromUser: false,
-              direction: 'incoming',
-              instagramAccountId: igAccount?.id
-            }
-          });
-
-          metaWebhook('Stored Instagram message in database');
-
-          // --- AUTO-REPLY LOGIC ---
-          // Only reply if there is text and it's a new message (not an echo)
-          // Also check if "Agent Bot" is enabled for this account (assuming yes for now)
-          // @ts-ignore - is_echo might exist on the raw message object but not in our simplified type
-          if (message.message?.text && !message.message.is_echo) {
-            try {
-              const { generateAIResponse, SYSTEM_PROMPTS } = await import('@/lib/ai-assistant');
-              const { sendInstagramMessage } = await import('@/lib/meta-client');
-
-              // 1. Get Conversation History (Last 5 messages) to provide context
-              // Simplified: for now just reply to the current message
-              // Ideally: fetch previous messages from DB
-
-              const systemPrompt = SYSTEM_PROMPTS['instagram']['en']; // Default to English for now, or detect
-              const chatMessages = [
-                { role: 'system' as const, content: systemPrompt },
-                { role: 'user' as const, content: message.message.text }
-              ];
-
-              // 2. Generate Reply
-              const aiReply = await generateAIResponse(chatMessages, 'instagram');
-
-              if (aiReply) {
-                metaWebhook('Generated AI Reply', { length: aiReply.length });
-
-                // 3. Send Reply via Instagram API
-                // Need access token. Using stored account info
-                if (igAccount?.accessToken) {
-                  await sendInstagramMessage({
-                    recipientId: message.sender.id, // Reply to sender
-                    message: aiReply,
-                    accessToken: igAccount.accessToken
-                  });
-
-                  // 4. Store Reply in DB
-                  await prisma.instagramMessage.create({
-                    data: {
-                      senderId: message.recipient.id, // We are sender
-                      recipientId: message.sender.id,
-                      message: aiReply,
-                      timestamp: new Date(),
-                      messageId: `reply_${Date.now()}`,
-                      isFromUser: true, // System generated
-                      direction: 'outgoing',
-                      instagramAccountId: igAccount.id
-                    }
-                  });
-                  metaWebhook('Sent and stored AI reply');
-                }
-              }
-            } catch (aiError) {
-              error('AI Auto-Reply Failed', aiError);
-            }
-          }
-        }
-      } catch (dbError) {
-        error('Failed to store Instagram messages', dbError);
+      for (const msg of messages) {
+        await processUnifiedMessage({
+          platform: 'INSTAGRAM',
+          timestamp: new Date(msg.timestamp),
+          externalId: msg.message?.mid || `ig_${Date.now()}`,
+          senderId: msg.sender.id,
+          recipientId: msg.recipient.id,
+          text: msg.message?.text || '',
+          entrypoint: 'webhook'
+        });
       }
     }
 
-    // Handle WhatsApp messages
+    // 2. Handle WhatsApp
     if (data.entry?.[0]?.changes?.[0]?.field === 'messages') {
-      const whatsappData = data.entry[0].changes[0].value;
-      metaWebhook('WhatsApp message received', {
-        phoneNumber: whatsappData.messages?.[0]?.from,
-        hasText: !!whatsappData.messages?.[0]?.text?.body
+      const waData = data.entry[0].changes[0].value;
+      if (waData.messages) {
+        const phoneNumberId = waData.metadata?.phone_number_id;
+        for (const msg of waData.messages) {
+          await processUnifiedMessage({
+            platform: 'WHATSAPP',
+            timestamp: new Date(parseInt(msg.timestamp) * 1000),
+            externalId: msg.id,
+            senderId: msg.from, // User Phone
+            recipientId: phoneNumberId, // Our Business Phone ID
+            text: msg.type === 'text' ? msg.text.body : `[${msg.type.toUpperCase()}]`,
+            entrypoint: 'webhook'
+          });
+        }
+      }
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error('Webhook processing error', err);
+    return NextResponse.json({ success: true });
+  }
+}
+
+interface UnifiedMessagePayload {
+  platform: 'INSTAGRAM' | 'WHATSAPP';
+  timestamp: Date;
+  externalId: string;
+  senderId: string;
+  recipientId: string;
+  text: string;
+  entrypoint: string;
+}
+
+async function processUnifiedMessage(payload: UnifiedMessagePayload) {
+  const { platform, timestamp, externalId, senderId, recipientId, text } = payload;
+
+  // 1. Identify Channel & Customer
+  const channelExternalId = senderId; // The user's ID/Phone
+
+  // Upsert Channel (Ghost Table: channel)
+  const channel = await prisma.channel.upsert({
+    where: { type_externalId: { type: platform, externalId: channelExternalId } },
+    update: { updatedAt: new Date() },
+    create: {
+      type: platform,
+      externalId: channelExternalId,
+      displayName: platform === 'WHATSAPP' ? `WA User ${senderId}` : `IG User ${senderId}`,
+      isActive: true
+    }
+  });
+
+  // 2. Link to Lead (Ghost Table: leads matching)
+  // Try to find lead by phone or some ID
+  let leadId: string | null = null;
+  let lead = null;
+  if (platform === 'WHATSAPP') {
+    const phoneKey = senderId.replace('+', ''); // Simple heuristic
+    lead = await prisma.lead.findFirst({
+      where: { phone: { contains: phoneKey } }
+    });
+  }
+  if (lead) leadId = lead.id;
+
+  // 3. Upsert Conversation (Ghost Table: conversation)
+  let conversation = await prisma.conversation.findFirst({
+    where: { channelId: channel.id, status: 'ACTIVE' },
+    orderBy: { lastMessageAt: 'desc' } // Fixed: updatedAt -> lastMessageAt (since updatedAt not in schema?)
+    // If lastMessageAt also not sortable? It has index.
+  });
+
+  if (!conversation) {
+    conversation = await prisma.conversation.create({
+      data: {
+        channelId: channel.id,
+        contactId: senderId,
+        status: 'ACTIVE',
+        // leadId: leadId, // REMOVED: conversation table does not have leadId in schema viewed
+        lastMessageAt: timestamp
+      }
+    });
+  } else {
+    await prisma.conversation.update({
+      where: { id: conversation.id },
+      data: { lastMessageAt: timestamp }
+    });
+  }
+
+  // 4. Store Unified Message (Ghost Table: message)
+  await prisma.message.create({
+    data: {
+      conversationId: conversation.id,
+      externalId: externalId,
+      direction: 'INBOUND',
+      source: platform,
+      text: text,
+      createdAt: timestamp
+    }
+  });
+
+  // 5. Store Legacy/Platform Specific Message (Ghost Table: whatsappMessage / instagramMessage)
+  if (platform === 'WHATSAPP') {
+    const waAccount = await prisma.whatsappAccount.findUnique({ where: { phoneNumberId: recipientId } });
+    await prisma.whatsappMessage.create({
+      data: {
+        whatsappAccountId: waAccount?.id,
+        senderId: senderId,
+        recipientId: recipientId, // Our PH ID
+        phoneNumber: senderId,    // User PH
+        message: text,
+        messageId: externalId,    // FIXED: Added
+        timestamp: timestamp,     // FIXED: Added
+        direction: 'INBOUND',
+        isFromUser: true,
+        leadId: leadId
+      }
+    });
+  } else {
+    const igAccount = await prisma.instagramAccount.findFirst({ where: { instagramUserId: recipientId } });
+    await prisma.instagramMessage.create({
+      data: {
+        instagramAccountId: igAccount?.id,
+        senderId: senderId,
+        recipientId: recipientId,
+        message: text,
+        messageId: externalId,
+        timestamp: timestamp,
+        direction: 'inbound',
+        isFromUser: false, // Schema default true? But logic implies this is from external user.
+        leadId: leadId
+      }
+    });
+  }
+
+  // 6. Notification (Ghost Table: notification)
+  if (leadId) {
+    if (lead?.assignedTo) {
+      await prisma.notification.create({
+        data: {
+          userId: lead.assignedTo,
+          type: 'MESSAGE',
+          title: `New Message from ${lead.name || senderId}`,
+          body: text.substring(0, 50),
+          leadId: leadId
+        }
+      });
+    }
+  }
+
+  // 7. AI Auto-Reply (Ghost Table: aIAutoReplyRule)
+  const rules = await prisma.aIAutoReplyRule.findMany({
+    where: {
+      platform: platform,
+      enabled: true,
+      isActive: true
+    },
+    orderBy: { priority: 'desc' }
+  });
+
+  let replyText = null;
+
+  for (const rule of rules) {
+    if (rule.keyword === '*' || text.toLowerCase().includes(rule.keyword?.toLowerCase() || '')) {
+      if (rule.useAI && rule.assistantId) {
+        const assistant = await prisma.aIAssistant.findUnique({ where: { id: rule.assistantId } });
+        if (assistant && assistant.isActive) {
+          const chatMessages = [
+            { role: 'system' as const, content: assistant.systemPrompt },
+            { role: 'user' as const, content: text }
+          ];
+          replyText = await generateAIResponse(chatMessages, platform.toLowerCase() as any);
+        }
+      } else if (rule.response) {
+        replyText = rule.response;
+      }
+      if (replyText) break;
+    }
+  }
+
+  if (replyText) {
+    try {
+      if (platform === 'INSTAGRAM') {
+        const igAccount = await prisma.instagramAccount.findFirst({ where: { instagramUserId: recipientId } });
+        if (igAccount?.accessToken) {
+          await sendInstagramMessage({
+            recipientId: senderId,
+            message: replyText,
+            accessToken: igAccount.accessToken
+          });
+        }
+      } else {
+        const waAccount = await prisma.whatsappAccount.findUnique({ where: { phoneNumberId: recipientId } });
+        if (waAccount?.accessToken) {
+          await sendWhatsAppMessage(
+            recipientId,
+            senderId,
+            replyText,
+            waAccount.accessToken
+          );
+        }
+      }
+
+      // Log Reply
+      await prisma.message.create({
+        data: {
+          conversationId: conversation.id,
+          externalId: `reply_${Date.now()}`, // Temporary ID
+          direction: 'OUTBOUND',
+          source: platform,
+          text: replyText,
+          aiGenerated: true
+        }
       });
 
-      // Store WhatsApp messages in database
-      try {
-        const metadata = whatsappData.metadata;
-        const phoneNumberId = metadata?.phone_number_id;
-
-        // Find the WhatsApp account associated with this phone number ID
-        const waAccount = await prisma.whatsappAccount.findUnique({
-          where: { phoneNumberId: phoneNumberId || '' }
-        });
-
-        if (whatsappData.messages) {
-          for (const message of whatsappData.messages) {
-            const isText = message.type === 'text';
-            const messageBody = isText ? message.text.body : `[${message.type.toUpperCase()}]`;
-
-            await prisma.whatsappMessage.create({
-              data: {
-                senderId: message.from, // The user's phone number
-                recipientId: phoneNumberId, // Our business phone number ID
-                phoneNumber: message.from,
-                message: messageBody,
-                timestamp: new Date(parseInt(message.timestamp) * 1000),
-                messageId: message.id,
-                isFromUser: true,
-                direction: 'INBOUND',
-                whatsappAccountId: waAccount?.id
-              }
-            });
-
-            metaWebhook('Stored WhatsApp message in database', { messageId: message.id });
+      if (platform === 'WHATSAPP') {
+        await prisma.whatsappMessage.create({
+          data: {
+            whatsappAccountId: (await prisma.whatsappAccount.findUnique({ where: { phoneNumberId: recipientId } }))?.id,
+            senderId: recipientId, // We are sender
+            recipientId: senderId,
+            phoneNumber: senderId, // Associated user phone
+            message: replyText,
+            messageId: `reply_${Date.now()}`, // FIXED
+            timestamp: new Date(),            // FIXED
+            direction: 'OUTBOUND',
+            isFromUser: false,
+            leadId: leadId
           }
-        }
-      } catch (dbError) {
-        error('Failed to store WhatsApp messages', dbError);
+        });
       }
+
+      // Log Audit
+      try {
+        // @ts-ignore
+        const { logAudit } = await import('@/lib/audit');
+        await logAudit({
+          action: 'AI_AUTO_REPLY',
+          details: `Replied to ${platform} message from ${senderId}`,
+          entityId: leadId || undefined
+        });
+      } catch (e) { }
+
+    } catch (sendErr) {
+      console.error("Failed to send auto-reply:", sendErr);
     }
-
-    // Always return 200 to Meta
-    return NextResponse.json({ success: true });
-
-  } catch (err) {
-    error('Webhook processing error', err);
-    // Always return 200 to Meta to prevent retries
-    return NextResponse.json({ success: true });
   }
 }

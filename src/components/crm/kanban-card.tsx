@@ -1,9 +1,10 @@
+import { useTranslations } from 'next-intl';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Lead } from '@/types/crm';
-import { GripVertical, Phone, Mail, DollarSign, Eye } from 'lucide-react';
+import { GripVertical, Phone, Mail, DollarSign, Eye, Clock, AlertTriangle, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface KanbanCardProps {
@@ -34,6 +35,25 @@ export function KanbanCard({ lead, onViewDetails, viewMode = 'CLASSIC', isExpand
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
+    };
+
+    // Helper for English Date Format DD/MM/YYYY
+    const appDate = (date: Date | string) => {
+        return new Date(date).toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        });
+    };
+
+    // Helper for Relative Time (Simple)
+    const timeAgo = (date: Date | string) => {
+        const d = new Date(date);
+        const now = new Date();
+        const diffDays = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
+        if (diffDays === 0) return "Today";
+        if (diffDays === 1) return "Yesterday";
+        return `${diffDays}d ago`;
     };
 
     if (isDragging) {
@@ -83,7 +103,7 @@ export function KanbanCard({ lead, onViewDetails, viewMode = 'CLASSIC', isExpand
                         <div className="flex items-center justify-between">
                             <div className="text-[10px] font-black text-primary/80 flex items-center gap-1">
                                 <DollarSign className="w-2.5 h-2.5" />
-                                {lead.budget || "—"}
+                                {lead.expectedValue ? Number(lead.expectedValue).toLocaleString('en-US') : "—"}
                             </div>
                             <Badge className="text-[9px] h-4 border-none bg-blue-500/20 text-blue-300 font-black">{lead.priority}</Badge>
                         </div>
@@ -101,71 +121,106 @@ export function KanbanCard({ lead, onViewDetails, viewMode = 'CLASSIC', isExpand
         )
     }
 
-    // --- CLASSIC MODE ---
+    // --- CLASSIC MODE (Enhanced) ---
     return (
         <div ref={setNodeRef} style={style} className={viewMode === 'STACK' && isExpanded ? "animate-in zoom-in-95 duration-300" : ""}>
-            <Card className="cursor-grab active:cursor-grabbing border-blue-500/10 bg-[#0a1129]/90 glass rounded-[2rem] overflow-hidden shadow-2xl transition-all hover:border-blue-500/30">
-                <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-transparent via-blue-500/30 to-transparent" />
-                <CardHeader className="p-4 pb-2 flex flex-row items-start justify-between space-y-0">
-                    <div className="flex-1 overflow-hidden">
-                        <CardTitle className="text-sm font-black tracking-tight text-blue-50 truncate">
+            <Card className={`cursor-grab active:cursor-grabbing border-white/5 bg-black/40 backdrop-blur-2xl glass rounded-[2.5rem] overflow-hidden shadow-[0_25px_50px_-12px_rgba(0,0,0,0.8)] transition-all duration-300 hover:border-primary/20 group relative ${lead.priority === 'HIGH' ? 'shadow-[0_0_30px_-5px_rgba(239,68,68,0.2)] border-red-500/20' : ''}`}>
+
+                {/* Dynamic Gradient Border Glow */}
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+
+                {/* Hot Lead Pulsing Indicator */}
+                {lead.priority === 'HIGH' && (
+                    <div className="absolute top-0 right-0 p-3 z-20">
+                        <span className="relative flex h-3 w-3">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                        </span>
+                    </div>
+                )}
+
+                {/* Priority Indicator Stripe */}
+                <div className={`absolute top-0 left-0 bottom-0 w-1.5 transition-all duration-500 ${lead.priority === 'HIGH' ? 'bg-red-500 shadow-[2px_0_15px_rgba(239,68,68,0.4)]' :
+                    lead.priority === 'MEDIUM' ? 'bg-amber-400 shadow-[2px_0_15px_rgba(251,191,36,0.3)]' :
+                        'bg-blue-400/40'
+                    }`} />
+
+                <CardHeader className="p-6 pb-2 flex flex-row items-start justify-between space-y-0 relative z-10">
+                    <div className="flex-1 overflow-hidden ml-2 pr-4">
+                        <div className="flex items-center gap-2 mb-1">
+                            {/* Last Interaction Badge */}
+                            <Badge variant="outline" className="text-[9px] h-5 px-1.5 border-white/10 text-white/40 bg-white/5 font-mono gap-1">
+                                <Clock className="w-2.5 h-2.5" />
+                                {timeAgo(lead.updatedAt)}
+                            </Badge>
+                        </div>
+                        <CardTitle className="text-base font-black tracking-tight text-white group-hover:text-primary transition-colors duration-300 truncate">
                             {lead.name}
                         </CardTitle>
-                        <div className="text-[10px] font-bold flex items-center gap-2 mt-1">
-                            <span className="text-blue-400/80 uppercase tracking-tighter">{lead.source}</span>
-                            <span className="text-blue-500/30">•</span>
-                            <span className="text-blue-200/40">{new Date(lead.createdAt).toLocaleDateString()}</span>
+                        <div className="text-[10px] font-black flex items-center gap-2 mt-2">
+                            <Badge variant="secondary" className="bg-primary/5 text-primary/60 border-primary/10 rounded-lg text-[9px] px-2 py-0 uppercase tracking-tighter">
+                                {lead.source}
+                            </Badge>
+                            <span className="text-white/10">•</span>
+                            <span className="text-white/20 uppercase tracking-widest font-mono">{appDate(lead.createdAt)}</span>
                         </div>
                     </div>
-                    <div {...attributes} {...listeners}>
-                        <GripVertical className="h-5 w-5 text-blue-500/10 hover:text-blue-400 transition-colors" />
+                    <div {...attributes} {...listeners} className="p-2 hover:bg-white/5 rounded-xl transition-colors">
+                        <GripVertical className="h-5 w-5 text-white/10 group-hover:text-primary/40 transition-colors" />
                     </div>
                 </CardHeader>
 
-                <CardContent className="p-4 pt-1 space-y-4">
-                    <div className="grid grid-cols-2 gap-3 bg-[#0d1633]/50 p-3 rounded-2xl border border-blue-500/5">
-                        <div className="space-y-0.5">
-                            <span className="text-[9px] font-black text-blue-500/40 uppercase tracking-widest">{t("phone")}</span>
-                            <div className="flex items-center gap-1.5">
-                                <Phone className="h-3 w-3 text-blue-400" />
-                                <span className="text-[11px] font-bold text-blue-100">{lead.phone}</span>
-                            </div>
-                        </div>
-                        <div className="space-y-0.5">
-                            <span className="text-[9px] font-black text-blue-500/40 uppercase tracking-widest">{t("budget")}</span>
-                            <div className="flex items-center gap-1.5 text-primary">
-                                <DollarSign className="h-3 w-3" />
-                                <span className="text-[11px] font-black">{lead.budget || "0"}</span>
+                <CardContent className="p-6 pt-2 space-y-5 relative z-10">
+                    <div className="flex flex-col gap-4 bg-white/[0.02] p-5 rounded-[1.5rem] border border-white/[0.05] backdrop-blur-sm group-hover:bg-white/[0.04] transition-colors">
+                        {/* Removed Phone/Email to de-clutter as per request ("تقليل النصوص الثانوية") */}
+                        <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.25em]">{t("budget")}</span>
+                            <div className="flex items-center gap-2">
+                                <DollarSign className="h-3.5 w-3.5 text-emerald-400" />
+                                <span className="text-sm font-black text-emerald-400 italic truncate font-mono">
+                                    {lead.expectedValue ? Number(lead.expectedValue).toLocaleString('en-US') : "0"} <span className="text-[9px] text-emerald-400/50 not-italic">AED</span>
+                                </span>
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-between gap-2">
-                        <Badge variant={lead.priority === 'HIGH' ? 'destructive' : 'outline'} className="text-[9px] px-2 py-0.5 h-6 rounded-lg border-blue-500/20 font-black tracking-wider translate-y-[-1px]">
+                    <div className="flex items-center justify-between gap-4">
+                        <Badge variant="outline" className={`text-[9px] px-3 py-1 h-7 rounded-xl font-black tracking-widest border-none shadow-inner ${lead.priority === 'HIGH' ? 'bg-red-500/10 text-red-400' :
+                            lead.priority === 'MEDIUM' ? 'bg-amber-400/10 text-amber-400' :
+                                'bg-blue-400/10 text-blue-400'
+                            }`}>
                             {lead.priority}
                         </Badge>
-                        {lead.assignedTo && (
-                            <div className="flex items-center gap-2 bg-blue-500/5 px-2 py-1 rounded-lg border border-blue-500/10">
-                                <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
-                                <span className="text-[9px] font-bold text-blue-200/60 uppercase">
-                                    {lead.assignedTo.split('-').pop()}
+
+                        {lead.assignedTo ? (
+                            <div className="flex items-center gap-2 bg-primary/5 px-3 py-1.5 rounded-xl border border-primary/10 group/owner group-hover:border-primary/30 transition-all">
+                                <User className="w-3 h-3 text-primary" />
+                                <span className="text-[9px] font-black text-primary/80 uppercase tracking-tighter">
+                                    {/* Extract First Name Attempt */}
+                                    {lead.assignedTo.includes('@') ? lead.assignedTo.split('@')[0] : lead.assignedTo.split('-').pop()}
                                 </span>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2 px-3 py-1.5 opacity-30">
+                                <span className="text-[9px] font-black uppercase">Unassigned</span>
                             </div>
                         )}
                     </div>
 
-                    <Button
-                        size="sm"
-                        variant="secondary"
-                        className="w-full h-10 text-[11px] font-black uppercase tracking-[0.15em] rounded-xl bg-blue-600/10 hover:bg-blue-600/20 text-blue-100 border border-blue-500/20 transition-all shadow-lg hover:shadow-blue-500/10"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onViewDetails?.(lead);
-                        }}
-                    >
-                        <Eye className="h-4 w-4 mr-2 text-blue-400" />
-                        {t("viewDetails")}
-                    </Button>
+                    <div className="pt-2">
+                        <Button
+                            size="sm"
+                            variant="secondary"
+                            className="w-full h-12 text-[11px] font-black uppercase tracking-[0.25em] rounded-2xl bg-white/5 hover:bg-primary hover:text-black hover:shadow-[0_0_25px_rgba(212,175,55,0.4)] transition-all duration-300 border border-white/5 active:scale-95"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onViewDetails?.(lead);
+                            }}
+                        >
+                            <Eye className="h-4 w-4 mr-2" />
+                            {t("viewDetails")}
+                        </Button>
+                    </div>
                 </CardContent>
             </Card>
         </div>

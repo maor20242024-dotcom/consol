@@ -29,7 +29,10 @@ export function LeadDetailsDialog({ open, onOpenChange, lead }: LeadDetailsDialo
     const { toast } = useToast();
     const [activities, setActivities] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
+    const [auditLogs, setAuditLogs] = useState<any[]>([]);
+    const [auditLoading, setAuditLoading] = useState(false);
     const [showAddActivity, setShowAddActivity] = useState(false);
+    const [initialActivityType, setInitialActivityType] = useState("NOTE");
     const [employees, setEmployees] = useState<any[]>([]);
 
     // Edit Mode State
@@ -41,10 +44,25 @@ export function LeadDetailsDialog({ open, onOpenChange, lead }: LeadDetailsDialo
         if (lead && open) {
             loadActivities();
             loadEmployees();
+            loadAuditLogs();
             setEditForm(lead);
             setIsEditing(false);
         }
     }, [lead, open]);
+
+    const loadAuditLogs = async () => {
+        if (!lead) return;
+        setAuditLoading(true);
+        try {
+            const res = await fetch(`/api/admin/audit?entityId=${lead.id}&limit=20`);
+            const data = await res.json();
+            setAuditLogs(Array.isArray(data) ? data : []);
+        } catch (error) {
+            console.error("Failed to load audit logs", error);
+        } finally {
+            setAuditLoading(false);
+        }
+    };
 
     const loadEmployees = async () => {
         const result = await getEmployees();
@@ -93,19 +111,24 @@ export function LeadDetailsDialog({ open, onOpenChange, lead }: LeadDetailsDialo
 
     if (!lead) return null;
 
-    const priorityColor = {
-        LOW: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-        MEDIUM: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
-        HIGH: "bg-red-500/20 text-red-400 border-red-500/30",
+    // Helper for English Date Format DD/MM/YYYY
+    const appDate = (date: Date | string) => {
+        return new Date(date).toLocaleString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
     };
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[96vh] overflow-y-auto bg-[#060b1d] border-blue-500/20 p-0 overflow-hidden rounded-[2.5rem] shadow-[0_0_100px_rgba(30,58,138,0.2)]">
+            <DialogContent className="max-w-[1100px] !w-[95vw] h-[90vh] bg-[#060b1d] border-blue-500/20 p-0 flex flex-col overflow-hidden rounded-[2.5rem] shadow-[0_0_100px_rgba(30,58,138,0.2)] lg:max-w-[1100px] sm:max-w-none">
                 <div className="absolute inset-0 bg-blue-500/5 -z-10 pointer-events-none backdrop-blur-3xl" />
 
-                {/* Header Section */}
-                <div className="p-8 bg-blue-950/20 border-b border-blue-500/10 relative">
+                {/* Sticky Header Section */}
+                <div className="p-8 bg-blue-950/20 border-b border-blue-500/10 relative z-20 flex-none">
                     <div className="flex justify-between items-start gap-4">
                         <div className="space-y-2 flex-1">
                             {isEditing ? (
@@ -159,7 +182,10 @@ export function LeadDetailsDialog({ open, onOpenChange, lead }: LeadDetailsDialo
                         <Button
                             variant="secondary"
                             className="bg-blue-600/10 hover:bg-blue-600/20 text-blue-100 font-black gap-2 h-12 px-6 rounded-2xl border border-blue-500/20 shadow-xl transition-all"
-                            onClick={() => setShowAddActivity(true)}
+                            onClick={() => {
+                                setInitialActivityType("CALL");
+                                setShowAddActivity(true);
+                            }}
                         >
                             <MessageSquarePlus className="w-5 h-5 text-blue-400" />
                             {t("logCall")}
@@ -167,6 +193,10 @@ export function LeadDetailsDialog({ open, onOpenChange, lead }: LeadDetailsDialo
                         <Button
                             variant="outline"
                             className="border-blue-500/20 bg-blue-900/10 hover:bg-blue-900/20 text-blue-300 font-black gap-2 h-12 px-6 rounded-2xl transition-all"
+                            onClick={() => {
+                                setInitialActivityType("MEETING");
+                                setShowAddActivity(true);
+                            }}
                         >
                             <Calendar className="w-5 h-5 text-blue-500/40" />
                             {t("schedule")}
@@ -174,10 +204,10 @@ export function LeadDetailsDialog({ open, onOpenChange, lead }: LeadDetailsDialo
                     </div>
                 </div>
 
-                <div className="p-8 space-y-10">
-                    <div className="grid md:grid-cols-3 gap-8">
+                <div className="flex-1 overflow-y-auto p-8 space-y-10 custom-scrollbar">
+                    <div className="grid md:grid-cols-12 gap-8">
                         {/* Contact Information */}
-                        <div className="md:col-span-2 space-y-6 bg-blue-950/20 p-8 rounded-[2rem] border border-blue-500/10 shadow-inner">
+                        <div className="md:col-span-8 space-y-6 bg-blue-950/20 p-8 rounded-[2rem] border border-blue-500/10 shadow-inner">
                             <h4 className="text-[11px] font-black text-blue-400/40 uppercase tracking-[0.3em] mb-4">{t("contactInformation")}</h4>
                             <div className="grid grid-cols-2 gap-x-8 gap-y-6">
                                 <div className="space-y-2">
@@ -187,9 +217,9 @@ export function LeadDetailsDialog({ open, onOpenChange, lead }: LeadDetailsDialo
                                             <Phone className="w-4 h-4 text-blue-400" />
                                         </div>
                                         {isEditing ? (
-                                            <Input className="bg-blue-950/40 border-blue-500/20 h-9" value={editForm.phone || ""} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} />
+                                            <Input className="bg-blue-950/40 border-blue-500/20 h-10" value={editForm.phone || ""} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} />
                                         ) : (
-                                            <span className="text-blue-50 text-base">{lead.phone || "—"}</span>
+                                            <span className="text-blue-50 text-base font-black">{lead.phone || "—"}</span>
                                         )}
                                     </div>
                                 </div>
@@ -200,22 +230,22 @@ export function LeadDetailsDialog({ open, onOpenChange, lead }: LeadDetailsDialo
                                             <Mail className="w-4 h-4 text-blue-400" />
                                         </div>
                                         {isEditing ? (
-                                            <Input className="bg-blue-950/40 border-blue-500/20 h-9" value={editForm.email || ""} onChange={e => setEditForm({ ...editForm, email: e.target.value })} />
+                                            <Input className="bg-blue-950/40 border-blue-500/20 h-10" value={editForm.email || ""} onChange={e => setEditForm({ ...editForm, email: e.target.value })} />
                                         ) : (
-                                            <span className="text-blue-50 text-base truncate max-w-[180px]">{lead.email || "—"}</span>
+                                            <span className="text-blue-50 text-base font-black truncate max-w-full" title={lead.email || ""}>{lead.email || "—"}</span>
                                         )}
                                     </div>
                                 </div>
-                                <div className="space-y-2 col-span-2">
+                                <div className="space-y-2 col-span-2 pt-2 border-t border-white/[0.03]">
                                     <label className="text-[10px] font-black text-blue-500/30 uppercase tracking-widest">{t("investmentBudget")}</label>
-                                    <div className="flex items-center gap-3 font-black group">
-                                        <div className="p-2 bg-primary/10 rounded-xl group-hover:bg-primary/20 transition-colors">
-                                            <DollarSign className="w-5 h-5 text-primary" />
+                                    <div className="flex items-center gap-4 font-black group">
+                                        <div className="p-3 bg-primary/10 rounded-2xl group-hover:bg-primary/20 transition-colors">
+                                            <DollarSign className="w-6 h-6 text-primary" />
                                         </div>
                                         {isEditing ? (
-                                            <Input className="bg-blue-950/40 border-blue-500/20 h-10 text-lg" value={editForm.budget || ""} onChange={e => setEditForm({ ...editForm, budget: e.target.value })} />
+                                            <Input className="bg-blue-950/40 border-blue-500/20 h-12 text-xl font-black" value={editForm.budget || ""} onChange={e => setEditForm({ ...editForm, budget: e.target.value })} />
                                         ) : (
-                                            <span className="text-2xl text-primary tracking-tight">{lead.budget || "0"}</span>
+                                            <span className="text-3xl text-primary tracking-tighter drop-shadow-[0_0_15px_rgba(var(--primary),0.3)] font-mono">{lead.budget ? lead.budget : "0"}</span>
                                         )}
                                     </div>
                                 </div>
@@ -223,7 +253,7 @@ export function LeadDetailsDialog({ open, onOpenChange, lead }: LeadDetailsDialo
                         </div>
 
                         {/* Ownership */}
-                        <div className="space-y-6 bg-blue-900/10 p-8 rounded-[2rem] border border-blue-500/10 border-dashed">
+                        <div className="md:col-span-4 space-y-6 bg-blue-900/10 p-8 rounded-[2rem] border border-blue-500/10 border-dashed">
                             <h4 className="text-[11px] font-black text-blue-400/40 uppercase tracking-[0.3em] mb-4">{t("ownership")}</h4>
 
                             <div className="space-y-6">
@@ -270,7 +300,7 @@ export function LeadDetailsDialog({ open, onOpenChange, lead }: LeadDetailsDialo
 
                     {/* Timeline & Audit */}
                     <Tabs defaultValue="timeline" className="w-full">
-                        <TabsList className="flex w-full bg-blue-950/40 p-1.5 rounded-2xl mb-8 border border-blue-500/5">
+                        <TabsList className="sticky top-0 z-10 flex w-full bg-[#060b1d]/80 backdrop-blur-md p-1.5 rounded-2xl mb-8 border border-blue-500/10 shadow-xl">
                             <TabsTrigger value="timeline" className="flex-1 rounded-xl h-11 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-blue-600 data-[state=active]:text-white transition-all">
                                 <ActivityIcon className="w-4 h-4 mr-2 opacity-50" />
                                 {t("interactionTimeline")}
@@ -290,6 +320,7 @@ export function LeadDetailsDialog({ open, onOpenChange, lead }: LeadDetailsDialo
                                     <h3 className="text-xl font-black text-blue-50 uppercase tracking-tighter mb-8">{t("addActivity")}</h3>
                                     <AddActivityForm
                                         leadId={lead.id}
+                                        initialType={initialActivityType}
                                         onSuccess={() => {
                                             setShowAddActivity(false);
                                             loadActivities();
@@ -307,24 +338,46 @@ export function LeadDetailsDialog({ open, onOpenChange, lead }: LeadDetailsDialo
                             )}
                         </TabsContent>
 
-                        <TabsContent value="details" className="bg-blue-950/20 p-10 rounded-[2.5rem] border border-blue-500/10 animate-in fade-in duration-500">
-                            <div className="grid grid-cols-2 gap-12 text-sm">
+                        <TabsContent value="details" className="bg-blue-950/20 p-10 rounded-[2.5rem] border border-blue-500/10 animate-in fade-in duration-500 space-y-8">
+                            <div className="grid grid-cols-2 gap-12 text-sm border-b border-blue-500/10 pb-8">
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black text-blue-500/30 uppercase tracking-widest">Capture Timestamp</label>
-                                    <p className="font-mono text-blue-100 text-base">{new Date(lead.createdAt).toLocaleString()}</p>
+                                    <p className="font-mono text-blue-100 text-base">{lead.createdAt ? appDate(lead.createdAt) : 'N/A'}</p>
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black text-blue-500/30 uppercase tracking-widest">Last Secure Sync</label>
-                                    <p className="font-mono text-blue-100 text-base">{new Date(lead.updatedAt).toLocaleString()}</p>
+                                    <p className="font-mono text-blue-100 text-base">{lead.updatedAt ? appDate(lead.updatedAt) : 'N/A'}</p>
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-blue-500/30 uppercase tracking-widest">Campaign Vector</label>
-                                    <p className="font-black text-lg text-primary uppercase tracking-tighter">{lead.campaign?.name || "Direct Organic"}</p>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-blue-500/30 uppercase tracking-widest">Projected Alpha Multiplier</label>
-                                    <p className="font-black text-3xl text-blue-50 tracking-tighter">{lead.expectedValue ? `${Number(lead.expectedValue).toLocaleString()} AED` : "N/A"}</p>
-                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <h4 className="text-[11px] font-black text-blue-400/40 uppercase tracking-[0.3em] mb-4">Change Log</h4>
+                                {auditLoading ? (
+                                    <div className="text-center py-4 text-blue-500/50">Loading audit trail...</div>
+                                ) : auditLogs.length === 0 ? (
+                                    <div className="text-center py-4 text-blue-500/30 italic">No audit records found.</div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {auditLogs.map((log) => (
+                                            <div key={log.id} className="flex flex-col gap-1 border-l-2 border-blue-500/20 pl-4 py-1">
+                                                <div className="flex items-center gap-2">
+                                                    <Badge variant="outline" className="text-[9px] h-4 border-blue-500/30 text-blue-300/70 font-mono">
+                                                        {log.action}
+                                                    </Badge>
+                                                    <span className="text-[10px] text-blue-500/40 font-mono">
+                                                        {appDate(log.createdAt)}
+                                                    </span>
+                                                </div>
+                                                <p className="text-sm text-blue-100 font-medium">
+                                                    {log.details}
+                                                </p>
+                                                <p className="text-[10px] text-blue-500/40 uppercase tracking-wider">
+                                                    By {log.user}
+                                                </p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </TabsContent>
                     </Tabs>

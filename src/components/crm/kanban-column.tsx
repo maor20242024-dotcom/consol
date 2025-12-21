@@ -41,11 +41,11 @@ export function KanbanColumn({ stage, leads, onViewDetails, viewMode = 'CLASSIC'
                 </Badge>
             </div>
 
-            {/* Droppable Area */}
-            <div ref={setNodeRef} className="flex-1 p-3 overflow-hidden">
-                <ScrollArea className="h-full pr-3">
+            {/* Droppable Area - Auto Height with Scroll */}
+            <div ref={setNodeRef} className="flex-1 min-h-0 p-3 overflow-hidden flex flex-col">
+                <ScrollArea className="flex-1 h-full pr-3 custom-scrollbar">
                     <SortableContext items={leadIds} strategy={verticalListSortingStrategy}>
-                        <div className={`flex flex-col min-h-[150px] transition-all duration-500 ${viewMode === 'STACK' ? 'gap-1' : 'gap-3'}`}>
+                        <div className={`flex flex-col pb-4 transition-all duration-500 ${viewMode === 'STACK' ? 'gap-1' : 'gap-3'}`}>
                             {leads.map((lead, index) => (
                                 <KanbanCard
                                     key={lead.id}

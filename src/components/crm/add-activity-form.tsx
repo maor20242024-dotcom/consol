@@ -16,15 +16,16 @@ import { useEffect } from "react";
 interface AddActivityFormProps {
     leadId: string;
     onSuccess?: () => void;
+    initialType?: string;
 }
 
-export function AddActivityForm({ leadId, onSuccess }: AddActivityFormProps) {
+export function AddActivityForm({ leadId, onSuccess, initialType = "NOTE" }: AddActivityFormProps) {
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
     const [aiLoading, setAiLoading] = useState(false);
     const [employees, setEmployees] = useState<any[]>([]);
     const [formData, setFormData] = useState({
-        type: "NOTE",
+        type: initialType,
         content: "",
         performedBy: "",
         scheduledFor: "",

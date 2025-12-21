@@ -4,13 +4,13 @@ import { useEffect, useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { PageShell } from "@/components/page-shell";
 import { Button } from "@/components/ui/button";
-import { Plus, LayoutGrid, List } from "lucide-react";
+import { Plus, LayoutGrid, List, Sparkles, Filter, Database, Users } from "lucide-react";
 import dynamic from "next/dynamic";
 import { KanbanBoard } from "@/components/crm/kanban-board";
-import { getLeads, getPipeline, getFilteredLeads } from "@/actions/crm"; // Updated import
+import { getLeads, getPipeline, getFilteredLeads } from "@/actions/crm";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Lead, Stage } from "@/types/crm";
-import { LeadFilters } from "@/components/crm/lead-filters"; // Import LeadFilters
+import { LeadFilters } from "@/components/crm/lead-filters";
 
 type LeadWithRelations = Omit<Lead, 'pipeline' | 'stage' | 'campaign'> & {
     pipeline: { id: string; name: string } | null;
@@ -36,25 +36,19 @@ export default function CRMPage() {
     const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
     const [detailsOpen, setDetailsOpen] = useState(false);
 
-    // Initial fetch
     const loadData = async () => {
         try {
             const [fetchedResult, fetchedPipeline] = await Promise.all([
-                getFilteredLeads({}), // Use getFilteredLeads instead of getLeads
+                getFilteredLeads({}),
                 getPipeline()
             ]);
 
             const fetchedLeads = fetchedResult.leads || [];
-
-            // Transform fetchedLeads to LeadWithRelations format
             const transformedLeads: LeadWithRelations[] = fetchedLeads.map((lead: any) => ({
                 ...lead,
                 email: lead.email || null,
                 expectedValue: typeof lead.expectedValue === 'object' ? Number(lead.expectedValue) : (lead.expectedValue ? Number(lead.expectedValue) : null),
-                pipeline: lead.pipeline ? {
-                    id: lead.pipeline.id,
-                    name: lead.pipeline.name
-                } : null,
+                pipeline: lead.pipeline ? { id: lead.pipeline.id, name: lead.pipeline.name } : null,
                 stage: lead.stage,
                 campaign: lead.campaign,
             }));
@@ -81,14 +75,10 @@ export default function CRMPage() {
                     ...lead,
                     email: lead.email || null,
                     expectedValue: typeof lead.expectedValue === 'object' ? Number(lead.expectedValue) : (lead.expectedValue ? Number(lead.expectedValue) : null),
-                    pipeline: lead.pipeline ? {
-                        id: lead.pipeline.id,
-                        name: lead.pipeline.name
-                    } : null,
+                    pipeline: lead.pipeline ? { id: lead.pipeline.id, name: lead.pipeline.name } : null,
                     stage: lead.stage,
                     campaign: lead.campaign,
                 }));
-                // Use a functional update to ensure we aren't depending on stale state, though setLeads doesn't really depend on prev state here.
                 setLeads(transformedLeads);
             }
         } catch (error) {
@@ -104,71 +94,100 @@ export default function CRMPage() {
     };
 
     return (
-        <div className="min-h-screen bg-background text-foreground relative overflow-hidden">
+        <div className="min-h-screen bg-background text-foreground relative overflow-hidden p-6 lg:p-8">
             <div className="fixed inset-0 -z-10">
-                <div className="absolute inset-0 bg-linear-to-br from-primary/5 via-background to-primary/10" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(212,175,55,0.05),transparent_50%)]" />
                 <FloatingDots />
             </div>
 
-            <div className="relative h-screen flex flex-col">
+            <div className="relative h-full flex flex-col">
                 <PageShell
                     title={t("title")}
                     description={t("description")}
                     variant="gradient"
                     actions={
-                        <div className="flex items-center gap-2">
-                            {/* Import/Export Dialog is self-contained with its button */}
+                        <div className="flex items-center gap-3">
                             <ImportLeadsDialog onSuccess={loadData} />
 
+                            <div className="h-10 w-[1px] bg-primary/20 mx-2 hidden md:block" />
+
                             <Tabs value={view} onValueChange={(v) => setView(v as "kanban" | "list")} className="hidden md:block">
-                                <TabsList className="bg-primary/10 border-primary/20">
-                                    <TabsTrigger value="kanban" className="data-[state=active]:bg-primary"><LayoutGrid className="w-4 h-4 mr-2" />Board</TabsTrigger>
-                                    <TabsTrigger value="list" className="data-[state=active]:bg-primary"><List className="w-4 h-4 mr-2" />List</TabsTrigger>
+                                <TabsList className="bg-primary/5 border border-primary/20 p-1 rounded-2xl">
+                                    <TabsTrigger value="kanban" className="rounded-xl data-[state=active]:bg-primary"><LayoutGrid className="w-4 h-4 mr-2" />Board</TabsTrigger>
+                                    <TabsTrigger value="list" className="rounded-xl data-[state=active]:bg-primary"><List className="w-4 h-4 mr-2" />List</TabsTrigger>
                                 </TabsList>
                             </Tabs>
 
                             {view === "kanban" && (
-                                <div className="flex bg-muted/50 p-1 rounded-lg border border-primary/10">
-                                    <Button
-                                        variant={cardDensity === "CLASSIC" ? "secondary" : "ghost"}
-                                        size="sm"
-                                        className="h-8 px-2 text-[10px] font-bold"
-                                        onClick={() => setCardDensity("CLASSIC")}
-                                    >CLASSIC</Button>
-                                    <Button
-                                        variant={cardDensity === "COMPACT" ? "secondary" : "ghost"}
-                                        size="sm"
-                                        className="h-8 px-2 text-[10px] font-bold"
-                                        onClick={() => setCardDensity("COMPACT")}
-                                    >COMPACT</Button>
-                                    <Button
-                                        variant={cardDensity === "STACK" ? "secondary" : "ghost"}
-                                        size="sm"
-                                        className="h-8 px-2 text-[10px] font-bold"
-                                        onClick={() => setCardDensity("STACK")}
-                                    >STACK</Button>
+                                <div className="flex bg-primary/5 p-1 rounded-2xl border border-primary/20">
+                                    {(["CLASSIC", "COMPACT", "STACK"] as const).map((density) => (
+                                        <Button
+                                            key={density}
+                                            variant={cardDensity === density ? "secondary" : "ghost"}
+                                            size="sm"
+                                            className="h-8 px-3 text-[10px] font-black tracking-widest rounded-xl transition-all"
+                                            onClick={() => setCardDensity(density)}
+                                        >{density}</Button>
+                                    ))}
                                 </div>
                             )}
 
                             <Button
-                                className="flex items-center gap-2 h-10 px-4 bg-primary hover:bg-primary/80 shadow-[0_0_15px_rgba(var(--primary),0.3)] transition-all"
+                                className="flex items-center gap-2 h-11 px-6 bg-primary hover:bg-primary/80 text-primary-foreground font-black tracking-tight rounded-2xl shadow-[0_0_25px_rgba(212,175,55,0.25)] hover:shadow-primary/40 transition-all active:scale-95"
                                 onClick={() => setAddLeadOpen(true)}
                             >
-                                <Plus className="w-4 h-4" />
+                                <Plus className="w-5 h-5 stroke-[3px]" />
                                 {t("addLead")}
                             </Button>
                         </div>
                     }
                 >
-                    <div className="flex flex-col h-full gap-4">
+                    <div className="flex flex-col h-full gap-8">
+                        {/* Summary Header */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-4">
+                            {[
+                                { label: "Total Leads", value: leads.length, icon: Users, color: "text-primary", bg: "bg-primary/5", border: "border-primary/20" },
+                                { label: "Pipeline Value", value: `${leads.reduce((acc, lead) => acc + (Number(lead.expectedValue) || 0), 0).toLocaleString()} AED`, icon: Database, color: "text-emerald-400", bg: "bg-emerald-500/5", border: "border-emerald-500/20" },
+                                { label: "Premium Hot", value: leads.filter(l => l.priority === 'HIGH').length, icon: Sparkles, color: "text-amber-400", bg: "bg-amber-500/5", border: "border-amber-500/20" },
+                                { label: "Lead Velocity", value: "+12%", icon: Filter, color: "text-blue-400", bg: "bg-blue-500/5", border: "border-blue-500/20" },
+                            ].map((stat, i) => (
+                                <div key={i} className={`glass p-6 rounded-[2.5rem] border ${stat.border} ${stat.bg} flex items-start justify-between group hover:scale-[1.02] transition-all duration-500 relative overflow-hidden shadow-2xl`}>
+                                    <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                                        <stat.icon className="w-16 h-16" />
+                                    </div>
+                                    <div className="relative z-10">
+                                        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground/60 mb-2">{stat.label}</p>
+                                        <p className="text-3xl font-black text-white group-hover:text-primary transition-colors tracking-tighter">{stat.value}</p>
+                                    </div>
+                                    <div className={`p-4 rounded-2xl ${stat.bg} ${stat.color} border ${stat.border} shadow-lg relative z-10`}>
+                                        <stat.icon className="w-6 h-6" />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
                         {/* Filters Section */}
-                        <div className="bg-card/30 backdrop-blur-xl p-4 rounded-3xl border border-primary/10 shadow-2xl">
-                            <LeadFilters onFiltersChange={handleFiltersChange} loading={loading} />
+                        <div className="glass rounded-[3rem] p-8 border border-white/5 shadow-2xl relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-12 opacity-[0.02] group-hover:opacity-5 transition-opacity">
+                                <Filter className="w-48 h-48" />
+                            </div>
+                            <div className="relative z-10">
+                                <LeadFilters onFiltersChange={handleFiltersChange} loading={loading} />
+                            </div>
                         </div>
 
                         {loading ? (
-                            <div className="flex items-center justify-center h-64">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                            <div className="flex-1 flex flex-col items-center justify-center min-h-[400px]">
+                                <div className="relative">
+                                    <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full scale-150 animate-pulse" />
+                                    <div className="p-8 rounded-full bg-black/40 border border-primary/20 backdrop-blur-2xl relative animate-in zoom-in-50 duration-500">
+                                        <Loader2 className="w-12 h-12 text-primary animate-[spin_3s_linear_infinite]" />
+                                    </div>
+                                </div>
+                                <div className="mt-8 flex flex-col items-center gap-2">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.5em] text-primary/60 animate-pulse">Synchronizing Node</p>
+                                    <div className="w-32 h-[1px] bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+                                </div>
                             </div>
                         ) : (
                             <div className="flex-1 overflow-hidden">
@@ -180,11 +199,13 @@ export default function CRMPage() {
                                         viewMode={cardDensity}
                                     />
                                 ) : (
-                                    <LeadListView
-                                        leads={leads as Lead[]}
-                                        onViewDetails={handleViewDetails}
-                                        onRefresh={loadData}
-                                    />
+                                    <div className="glass rounded-[2rem] border border-primary/10 overflow-hidden">
+                                        <LeadListView
+                                            leads={leads as Lead[]}
+                                            onViewDetails={handleViewDetails}
+                                            onRefresh={loadData}
+                                        />
+                                    </div>
                                 )}
                             </div>
                         )}
@@ -208,3 +229,9 @@ export default function CRMPage() {
         </div>
     );
 }
+
+const Loader2 = ({ className }: { className?: string }) => (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+    </svg>
+);

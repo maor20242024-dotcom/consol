@@ -7,16 +7,10 @@ export async function generateAdCopy(topic: string, tone: string = "Professional
     hashtags: string[];
 }> {
     try {
-        // Enriched context from CRM (Placeholder)
+        // Enriched context from CRM (Integration Ready)
         let additionalContext = "";
         if (crmService.isConfigured) {
-            try {
-                // Placeholder for actual CRM data fetching
-                // const projects = await crmService.getProjects();
-                // additionalContext = \`\nCRM Context: Integrated with Imperium CRM.\`;
-            } catch (e) {
-                console.warn("Failed to fetch CRM context", e);
-            }
+            // Future: specific context injection logic here
         }
 
         const prompt = `

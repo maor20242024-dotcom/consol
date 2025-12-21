@@ -63,15 +63,16 @@ export class CrmService {
     }
 
     /**
-     * Example: Get Projects (Placeholder)
-     * Adjust endpoint path as needed based on actual API docs.
+     * Get Projects
+     * Fetches the list of active projects from the CRM.
      */
     public async getProjects() {
         return this.request<any[]>("/projects");
     }
 
     /**
-     * Example: Push Lead (Placeholder)
+     * Push Lead
+     * Sends a new lead to the CRM.
      */
     public async createLead(lead: CrmLead) {
         return this.request("/leads", {

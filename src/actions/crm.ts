@@ -111,20 +111,7 @@ export async function createLead(data: {
     }
 }
 
-export async function updateLeadStage(leadId: string, stageId: string) {
-    try {
-        await prisma.lead.update({
-            where: { id: leadId },
-            data: { stageId },
-        });
 
-        revalidatePath("/[locale]/crm", "page");
-        return { success: true };
-    } catch (error) {
-        console.error("Failed to update lead stage:", error);
-        return { success: false, error: "Failed to update lead stage" };
-    }
-}
 
 /**
  * 🎯 NEW: Get leads with filtering capabilities
@@ -228,15 +215,43 @@ export async function getFilteredLeads(filters: {
     }
 }
 
-// ... existing code ...
-
 export async function updateLead(leadId: string, data: any) {
     try {
-        const updateData: any = { ...data };
+        // Essential: Extract only the fields that actually exist as columns in the Lead table
+        // to avoid Prisma relation validation errors (like 'pipelineId' vs 'pipeline').
+        const {
+            name,
+            phone,
+            email,
+            budget,
+            status,
+            priority,
+            expectedValue,
+            source,
+            score,
+            assignedTo,
+            campaignId,
+            pipelineId,
+            stageId
+        } = data;
 
-        // Handle Decimal conversion if present
-        if (updateData.expectedValue) {
-            updateData.expectedValue = Number(updateData.expectedValue);
+        const updateData: any = {};
+        if (name !== undefined) updateData.name = name;
+        if (phone !== undefined) updateData.phone = phone;
+        if (email !== undefined) updateData.email = email;
+        if (budget !== undefined) updateData.budget = budget;
+        if (status !== undefined) updateData.status = status;
+        if (priority !== undefined) updateData.priority = priority;
+        if (source !== undefined) updateData.source = source;
+        if (score !== undefined) updateData.score = Number(score);
+        if (assignedTo !== undefined) updateData.assignedTo = assignedTo;
+        if (campaignId !== undefined) updateData.campaignId = campaignId;
+        if (pipelineId !== undefined) updateData.pipelineId = pipelineId;
+        if (stageId !== undefined) updateData.stageId = stageId;
+
+        // Handle Decimal/Number conversion
+        if (expectedValue !== undefined) {
+            updateData.expectedValue = Number(expectedValue);
         }
 
         await prisma.lead.update({
@@ -245,10 +260,26 @@ export async function updateLead(leadId: string, data: any) {
         });
 
         revalidatePath("/[locale]/crm", "page");
+        revalidatePath("/[locale]/dashboard", "page");
         return { success: true };
     } catch (error) {
         console.error("Failed to update lead:", error);
         return { success: false, error: "Failed to update lead" };
+    }
+}
+
+export async function updateLeadStage(leadId: string, stageId: string) {
+    try {
+        await prisma.lead.update({
+            where: { id: leadId },
+            data: { stageId },
+        });
+
+        revalidatePath("/[locale]/crm", "page");
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to update lead stage:", error);
+        return { success: false, error: "Failed to update lead stage" };
     }
 }
 

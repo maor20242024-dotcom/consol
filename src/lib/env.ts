@@ -30,6 +30,7 @@ export const env = {
     ZAI_API_KEY: process.env.ZAI_API_KEY,
     ZAI_MODEL: process.env.ZAI_MODEL,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    ZAI_CODING_API_BASE_URL: process.env.ZAI_CODING_API_BASE_URL,
     // Google Sheets Integration
     GOOGLE_SERVICE_ACCOUNT_EMAIL: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
     GOOGLE_PRIVATE_KEY: process.env.GOOGLE_PRIVATE_KEY,

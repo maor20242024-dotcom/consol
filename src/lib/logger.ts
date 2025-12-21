@@ -62,10 +62,20 @@ export function warn(message: string, data?: any) {
   }
 }
 
+export function ai(message: string, data?: any) {
+  const timestamp = new Date().toISOString();
+  const prefix = colorize(`[${timestamp}] [AI]`, 'magenta');
+  console.log(prefix, message);
+  if (data) {
+    console.log(colorize('AI data:', 'yellow'), data);
+  }
+}
+
 export default {
   log,
   error,
   metaWebhook,
   metaSent,
   warn,
+  ai,
 };

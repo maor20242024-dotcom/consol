@@ -1,0 +1,635 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id               String            @id @default(uuid())
+  email            String            @unique
+  name             String?
+  role             String            @default("user")
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  isActive         Boolean           @default(true)
+  password         String?
+  settings         Json?             @default("{}")
+  notifications    Notification[]
+  aiAutoReplyRules AIAutoReplyRule[]
+  auditLogs        AuditLog[]
+}
+
+model SystemSetting {
+  id        String   @id @default("global")
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model Lead {
+  id                String             @id @default(cuid())
+  name              String
+  email             String?
+  phone             String?
+  budget            String?
+  status            String             @default("new")
+  score             Int                @default(0)
+  source            String             @default("MANUAL")
+  pipelineId        String?
+  stageId           String?
+  priority          String             @default("MEDIUM")
+  expectedValue     Decimal?           @default(0)
+  assignedTo        String?
+  campaignId        String?
+  conversationId    String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  sourcePlatform    String?
+  sourceType        String?
+  sourceUrl         String?
+  sourceVideoUrl    String?
+  activities        Activity[]
+  calls             Call[]
+  instagramMessages InstagramMessage[]
+  campaign          Campaign?          @relation(fields: [campaignId], references: [id])
+  pipeline          Pipeline?          @relation(fields: [pipelineId], references: [id])
+  stage             Stage?             @relation(fields: [stageId], references: [id])
+  notifications     Notification[]
+  whatsappMessages  WhatsappMessage[]
+
+  @@index([pipelineId])
+  @@index([stageId])
+  @@index([assignedTo])
+  @@index([campaignId])
+  @@index([conversationId])
+}
+
+model Pipeline {
+  id        String   @id @default(cuid())
+  name      String
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  leads     Lead[]
+  stages    Stage[]
+}
+
+model Stage {
+  id         String   @id @default(cuid())
+  pipelineId String
+  name       String
+  order      Int      @default(0)
+  color      String   @default("#000000")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  leads      Lead[]
+  pipeline   Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+
+  @@index([pipelineId])
+}
+
+model Activity {
+  id           String    @id @default(cuid())
+  leadId       String
+  type         String
+  content      String
+  performedBy  String?
+  scheduledFor DateTime?
+  aiSummary    String?
+  duration     Int?
+  isCompleted  Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  lead         Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@index([scheduledFor])
+  @@index([isCompleted])
+}
+
+model Call {
+  id            String    @id @default(cuid())
+  zadarmaCallId String?   @unique
+  leadId        String?
+  phoneNumber   String
+  direction     String
+  status        String
+  duration      Int?
+  recordingUrl  String?
+  transcript    String?
+  startedAt     DateTime?
+  endedAt       DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lead          Lead?     @relation(fields: [leadId], references: [id])
+
+  @@index([leadId])
+  @@index([zadarmaCallId])
+  @@index([phoneNumber])
+  @@index([direction])
+  @@index([status])
+}
+
+model Campaign {
+  id                String             @id @default(cuid())
+  name              String
+  objective         String?
+  budget            Decimal?           @default(0)
+  spent             Decimal?           @default(0)
+  startDate         DateTime?
+  endDate           DateTime?
+  externalId        String?            @unique
+  userId            String
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  clicks            Int                @default(0)
+  conversions       Int                @default(0)
+  creativeType      String?
+  destinationUrl    String?
+  impressions       Int                @default(0)
+  spend             Decimal?           @db.Decimal(10, 2)
+  videoUrl          String?
+  platform          String             @default("FACEBOOK")
+  status            String             @default("DRAFT")
+  adSets            AdSet[]
+  insights          Insight[]
+  instagramMessages InstagramMessage[]
+  leads             Lead[]
+  whatsappMessages  WhatsappMessage[]
+
+  @@index([userId])
+}
+
+model AdSet {
+  id         String    @id @default(cuid())
+  campaignId String
+  name       String
+  status     String    @default("DRAFT")
+  budget     Decimal?
+  targeting  Json?
+  startDate  DateTime?
+  endDate    DateTime?
+  externalId String?   @unique
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  ads        Ad[]
+  campaign   Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  insights   Insight[]
+
+  @@index([campaignId])
+}
+
+model Ad {
+  id         String    @id @default(cuid())
+  adSetId    String
+  name       String
+  status     String    @default("DRAFT")
+  creativeId String?
+  externalId String?   @unique
+  previewUrl String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  adSet      AdSet     @relation(fields: [adSetId], references: [id], onDelete: Cascade)
+  insights   Insight[]
+
+  @@index([adSetId])
+  @@index([creativeId])
+}
+
+model Insight {
+  id          String    @id @default(cuid())
+  date        DateTime
+  campaignId  String?
+  adSetId     String?
+  adId        String?
+  impressions Int       @default(0)
+  clicks      Int       @default(0)
+  spend       Decimal   @default(0)
+  leads       Int       @default(0)
+  reach       Int       @default(0)
+  ctr         Decimal?  @default(0)
+  cpc         Decimal?  @default(0)
+  cpm         Decimal?  @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  ad          Ad?       @relation(fields: [adId], references: [id])
+  adSet       AdSet?    @relation(fields: [adSetId], references: [id])
+  campaign    Campaign? @relation(fields: [campaignId], references: [id])
+
+  @@index([date])
+  @@index([campaignId])
+  @@index([adSetId])
+  @@index([adId])
+}
+
+model InstagramAccount {
+  id                String              @id @default(cuid())
+  userId            String
+  instagramUserId   String              @unique
+  instagramUsername String
+  accessToken       String
+  businessAccountId String
+  followers         Int                 @default(0)
+  engagementRate    Float               @default(0)
+  status            String              @default("active")
+  lastSyncedAt      DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  ads               InstagramAd[]
+  campaigns         InstagramCampaign[]
+  messages          InstagramMessage[]
+  posts             InstagramPost[]
+
+  @@index([userId])
+}
+
+model InstagramPost {
+  id               String           @id @default(cuid())
+  accountId        String
+  caption          String?
+  mediaUrl         String
+  mediaType        String           @default("IMAGE")
+  status           String           @default("DRAFT")
+  scheduledFor     DateTime?
+  publishedAt      DateTime?
+  instagramMediaId String?          @unique
+  userId           String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  account          InstagramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@index([status])
+  @@index([scheduledFor])
+}
+
+model InstagramCampaign {
+  id             String           @id @default(cuid())
+  accountId      String
+  name           String
+  description    String?
+  budget         Decimal          @default(0)
+  targetAudience Json?
+  status         String           @default("draft")
+  startDate      DateTime?
+  endDate        DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  ads            InstagramAd[]
+  account        InstagramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  AdCampaign     AdCampaign[]
+
+  @@index([accountId])
+}
+
+model InstagramAd {
+  id           String            @id @default(cuid())
+  accountId    String
+  campaignId   String
+  adAccountId  String?
+  adType       String
+  headline     String
+  description  String
+  callToAction String            @default("SHOP_NOW")
+  status       String            @default("draft")
+  impressions  Int               @default(0)
+  clicks       Int               @default(0)
+  conversions  Int               @default(0)
+  spend        Decimal           @default(0)
+  ctr          Float             @default(0)
+  cpc          Decimal           @default(0)
+  cpa          Decimal           @default(0)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  assets       AdAsset[]
+  performance  AdPerformance[]
+  variants     AdVariant[]
+  account      InstagramAccount  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  campaign     InstagramCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@index([campaignId])
+}
+
+model AdAsset {
+  id         String      @id @default(cuid())
+  adId       String
+  assetType  String
+  url        String
+  thumbnail  String?
+  altText    String?
+  dimensions Json?
+  fileSize   Int?
+  duration   Int?
+  uploadedAt DateTime    @default(now())
+  ad         InstagramAd @relation(fields: [adId], references: [id], onDelete: Cascade)
+
+  @@index([adId])
+}
+
+model AdVariant {
+  id          String      @id @default(cuid())
+  adId        String
+  variantName String
+  headline    String?
+  description String?
+  imageId     String?
+  status      String      @default("active")
+  impressions Int         @default(0)
+  clicks      Int         @default(0)
+  conversions Int         @default(0)
+  spend       Decimal     @default(0)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  ad          InstagramAd @relation(fields: [adId], references: [id], onDelete: Cascade)
+
+  @@index([adId])
+}
+
+model AdPerformance {
+  id           String      @id @default(cuid())
+  adId         String
+  date         DateTime
+  impressions  Int         @default(0)
+  clicks       Int         @default(0)
+  conversions  Int         @default(0)
+  spend        Decimal     @default(0)
+  reach        Int         @default(0)
+  saveCount    Int         @default(0)
+  shareCount   Int         @default(0)
+  likeCount    Int         @default(0)
+  commentCount Int         @default(0)
+  createdAt    DateTime    @default(now())
+  ad           InstagramAd @relation(fields: [adId], references: [id], onDelete: Cascade)
+
+  @@index([adId])
+  @@index([date])
+}
+
+model Channel {
+  id            String         @id @default(cuid())
+  type          String
+  externalId    String
+  displayName   String?
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  conversations Conversation[]
+
+  @@unique([type, externalId])
+}
+
+model Conversation {
+  id            String    @id @default(cuid())
+  channelId     String
+  externalId    String?
+  contactId     String?
+  contactName   String?
+  contactHandle String?
+  lastMessageAt DateTime?
+  status        String    @default("ACTIVE")
+  channel       Channel   @relation(fields: [channelId], references: [id])
+  messages      Message[]
+
+  @@index([channelId])
+  @@index([contactId])
+  @@index([contactHandle])
+  @@index([lastMessageAt])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  externalId     String?
+  direction      String
+  source         String
+  text           String?
+  payload        Json?
+  isRead         Boolean      @default(false)
+  aiGenerated    Boolean      @default(false)
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+
+  @@index([conversationId])
+  @@index([externalId])
+  @@index([direction])
+  @@index([source])
+  @@index([createdAt])
+}
+
+model InstagramMessage {
+  id                 String            @id @default(cuid())
+  senderId           String?
+  recipientId        String?
+  username           String?
+  message            String
+  timestamp          DateTime
+  messageId          String            @unique
+  isFromUser         Boolean           @default(true)
+  direction          String            @default("inbound")
+  instagramAccountId String?
+  leadId             String?
+  campaignId         String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  campaign           Campaign?         @relation(fields: [campaignId], references: [id])
+  instagramAccount   InstagramAccount? @relation(fields: [instagramAccountId], references: [id])
+  lead               Lead?             @relation(fields: [leadId], references: [id])
+
+  @@index([senderId])
+  @@index([recipientId])
+  @@index([messageId])
+  @@index([leadId])
+  @@index([campaignId])
+  @@index([timestamp])
+  @@index([instagramAccountId])
+}
+
+model WhatsappAccount {
+  id            String            @id @default(cuid())
+  userId        String
+  phoneNumberId String            @unique
+  phoneNumber   String
+  businessName  String?
+  accessToken   String
+  status        String            @default("active")
+  lastSyncedAt  DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  messages      WhatsappMessage[]
+
+  @@index([userId])
+}
+
+model WhatsappMessage {
+  id                String           @id @default(cuid())
+  senderId          String?
+  recipientId       String?
+  phoneNumber       String
+  message           String
+  timestamp         DateTime
+  messageId         String           @unique
+  isFromUser        Boolean          @default(true)
+  direction         String           @default("INBOUND")
+  whatsappAccountId String?
+  leadId            String?
+  campaignId        String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  campaign          Campaign?        @relation(fields: [campaignId], references: [id])
+  lead              Lead?            @relation(fields: [leadId], references: [id])
+  whatsappAccount   WhatsappAccount? @relation(fields: [whatsappAccountId], references: [id])
+
+  @@index([phoneNumber])
+  @@index([messageId])
+  @@index([leadId])
+  @@index([campaignId])
+  @@index([timestamp])
+  @@index([direction])
+  @@index([whatsappAccountId])
+}
+
+model AIAssistant {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  role         String?
+  systemPrompt String
+  isActive     Boolean  @default(true)
+  userId       String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([role])
+  @@index([isActive])
+  @@index([userId])
+}
+
+model AIConversation {
+  id        String                  @id @default(cuid())
+  userId    String?
+  title     String?
+  mode      String?
+  createdAt DateTime                @default(now())
+  updatedAt DateTime                @updatedAt
+  messages  AIConversationMessage[]
+
+  @@index([userId])
+  @@index([mode])
+  @@map("ai_conversations")
+}
+
+model AIConversationMessage {
+  id             String         @id @default(cuid())
+  conversationId String
+  role           String
+  content        String
+  timestamp      DateTime
+  createdAt      DateTime       @default(now())
+  conversation   AIConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@map("ai_conversation_messages")
+}
+
+model AdCampaign {
+  id                  String             @id @default(cuid())
+  name                String
+  objective           String?
+  status              String             @default("draft")
+  platform            String?
+  dailyBudget         Float?
+  totalBudget         Float?
+  currency            String?            @default("AED")
+  startDate           DateTime?
+  endDate             DateTime?
+  userId              String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  instagramCampaignId String?
+  instagramCampaign   InstagramCampaign? @relation(fields: [instagramCampaignId], references: [id])
+  creatives           AdCreative[]
+
+  @@index([userId])
+  @@map("ad_campaigns")
+}
+
+model AdCreative {
+  id           String     @id @default(cuid())
+  campaignId   String
+  headline     String
+  description  String?
+  imageUrl     String?
+  callToAction String?
+  placement    String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  campaign     AdCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@map("ad_creatives")
+}
+
+model AIAutoReplyRule {
+  id                     String   @id @default(uuid())
+  userId                 String
+  name                   String
+  keyword                String?
+  response               String?
+  useAI                  Boolean  @default(false)
+  assistantId            String?
+  platform               String
+  enabled                Boolean  @default(true)
+  isActive               Boolean  @default(true)
+  priority               Int      @default(0)
+  timeRestrictionEnabled Boolean  @default(false)
+  startTime              String?
+  endTime                String?
+  timezone               String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([platform])
+  @@index([enabled])
+  @@index([isActive])
+  @@map("ai_auto_reply_rules")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  type      String
+  title     String
+  body      String
+  leadId    String?
+  userId    String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  lead      Lead?    @relation(fields: [leadId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([leadId])
+  @@index([isRead])
+}
+
+
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  details   String?
+  userId    String?
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
